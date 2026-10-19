@@ -6,8 +6,8 @@
 ## Tim
  Ime i prezime | Broj indeksa | GitHub |
 | --- | --- | --- |
-| Pavle Pantić | _SI 94/24_ | [@nalog](https://github.com/pantic236) |
-| Đorđe Filipović | _SI 73/24_ | [@nalog](https://github.com/DjordjeFilipovic21) |
+| Pavle Pantić | _SI 94/24_ | [@pantic236](https://github.com/pantic236) |
+| Đorđe Filipović | _SI 73/24_ | [@DjordjeFilipovic21](https://github.com/DjordjeFilipovic21) |
 
 ## Delovi sistema
 
