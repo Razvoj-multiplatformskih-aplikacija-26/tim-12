@@ -18,7 +18,7 @@ Svi delovi su napisani u Dartu i koriste isti domenski paket sa modelima, stanji
 | Mobilna aplikacija | Flutter (Android, iOS) | Slušaoci i host: pridruživanje sobi, predlozi, glasanje, puštanje pesme |
 | Backoffice | Flutter (veb, desktop) | Moderatori: sobe, pesme, prijave, korisnici |
 | Server | Dart | Čuva podatke, sprovodi pravila, zatvara runde i bira pobednika |
-| Javni veb | Dart / Flutter veb | Javne sobe, trenutno puštena pesma, istorija i top liste |
+| Javni veb | Jaspr | Javne sobe, trenutno puštena pesma, istorija i top liste |
 
 ## Ispunjenost zahteva
 Postoje tri uloge: **slušalac** predlaže pesme i glasa, **host/DJ** otvara sobu, podešava trajanje runde i pušta pobedničku pesmu, a **moderator** u backoffice-u uklanja neprimerene predloge, zatvara sobe i blokira korisnike.
