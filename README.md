@@ -36,4 +36,18 @@ Slušalac može predložiti pesmu i bez mreže. Predlog se čuva lokalno i šalj
 Moderator u backoffice-u radi sa tabelama svih soba, predloga i korisnika istovremeno: filtrira i sortira prijave, pregleda istoriju glasanja po sobi i masovno uklanja predloge ili blokira naloge. Za takav posao potreban je veći ekran.
 
 ### 6. Javni sadržaj
-Javne sobe, pesma koja se trenutno pušta, istorija puštenih pesama i nedeljne top liste po sobi dostupni su bez prijave. Taj sadržaj ima smisla za pretraživače, na primer kada neko traži „najpuštenije pesme na žurkama“.
+Javne sobe, pesma koja se trenutno pušta, istorija puštenih pesama i nedeljne top liste po sobi dostupni su bez prijave. Taj sadržaj ima smisla za pretraživače, na primer kada neko traži „najpuštenije pesme na žurkama".
+
+## Pokretanje
+
+Uslov: Flutter SDK (Dart ≥ 3.6). Provereno sa Flutter 3.47.8.
+
+```sh
+flutter pub get          # iz korena: resava sve pakete odjednom (jedan pubspec.lock)
+cd apps/mobile
+flutter run              # mobilna aplikacija (Android/iOS)
+cd ../backoffice
+flutter run              # backoffice (Linux desktop; za veb: flutter run -d chrome)
+```
+
+Za veb pokretanje potreban je Chrome/Chromium (`CHROME_EXECUTABLE` pokazuje na njega ako nije na podrazumevanoj putanji). Android emulator zahteva Android SDK (uputstvo: `flutter doctor`).

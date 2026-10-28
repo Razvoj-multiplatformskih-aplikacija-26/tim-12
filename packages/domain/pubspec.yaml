@@ -1,0 +1,12 @@
+name: radioroom_domain
+description: RadioRoom deljeni domenski modeli, stanja i pravila. Cist Dart paket, bez Flutter zavisnosti.
+version: 0.1.0
+
+# Privatan paket: nikad se ne objavljuje na pub.dev.
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
+resolution: workspace

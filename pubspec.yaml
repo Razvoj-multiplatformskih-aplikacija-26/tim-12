@@ -1,0 +1,22 @@
+# RadioRoom — korenski manifest pub workspace-a
+#
+# Ovo NIJE paket sa kodom: on samo objedinjuje sve pakete sistema u
+# jedan workspace sa jednom (deljenom) rezolucijom zavisnosti.
+# Pokretanje: `flutter pub get` iz korena (generiše jedan pubspec.lock ovde).
+name: radioroom_workspace
+
+environment:
+  # Pub workspace zahteva Dart >= 3.6
+  sdk: ^3.6.0
+
+# Clanovi workspace-a: relativne putanje do paketa i aplikacija.
+workspace:
+  - packages/domain
+  - packages/blocs
+  - apps/mobile
+  - apps/backoffice
+
+# Ovaj paket JE koren workspace-a samim tim sto nabraja clanove iznad:
+# jedan `pub get` ovde resava zavisnosti svih clanova u jedan zajednicki
+# lockfile u korenu. Clanovi se ukljucuju tako sto u svoj pubspec stave
+# `resolution: workspace`.
