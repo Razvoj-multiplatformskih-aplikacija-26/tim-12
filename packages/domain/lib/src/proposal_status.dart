@@ -28,8 +28,25 @@ final class Winner extends ProposalStatus {
 }
 
 /// Pustena — host je pustio pesmu. Terminalno.
+///
+/// Jedino stanje sa podatkom: trenutak pustanja, po njemu pravilo
+/// "nije pustena u poslednjih sat" racuna zastarelost. Ostala stanja ostaju
+/// bez podataka — sealed hijerarhija to dozvoljava bez lomljenja klijenta.
 final class Played extends ProposalStatus {
-  const Played();
+  Played(this.playedAt);
+
+  final DateTime playedAt;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is Played && other.playedAt == playedAt;
+
+  @override
+  int get hashCode => Object.hash(Played, playedAt);
+
+  @override
+  String toString() => 'Played($playedAt)';
 }
 
 /// Odbijena — izgubila rundu. Terminalno.
@@ -41,6 +58,23 @@ final class Rejected extends ProposalStatus {
 final class Removed extends ProposalStatus {
   const Removed();
 }
+
+/// Porede dva statusa po vrednosti.
+///
+/// Vecina stanja nema podatke pa se porede po tipu; `Played` nosi trenutak
+/// pustanja pa se poredi i on. Koristi ga `Proposal.==` da `withStatus`
+/// kopije ostanu uporedive i za `const` i za ne-`const` instance.
+bool sameProposalStatus(ProposalStatus a, ProposalStatus b) =>
+    switch ((a, b)) {
+      (Played(playedAt: final t1), Played(playedAt: final t2)) => t1 == t2,
+      _ => a.runtimeType == b.runtimeType,
+    };
+
+/// Hash uskladjen sa [sameProposalStatus].
+int proposalStatusHash(ProposalStatus s) => switch (s) {
+  Played(playedAt: final at) => Object.hash(Played, at),
+  _ => Object.hash(s.runtimeType, 0),
+};
 
 /// Jedina funkcija koja kaze koji su prelazi dozvoljeni.
 ///

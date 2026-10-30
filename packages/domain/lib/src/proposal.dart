@@ -59,7 +59,7 @@ final class Proposal {
           other.externalLink == externalLink &&
           other.proposedBy == proposedBy &&
           other.proposedAt == proposedAt &&
-          other.status.runtimeType == status.runtimeType;
+          sameProposalStatus(other.status, status);
 
   @override
   int get hashCode => Object.hash(
@@ -70,7 +70,7 @@ final class Proposal {
     externalLink,
     proposedBy,
     proposedAt,
-    status.runtimeType,
+    proposalStatusHash(status),
   );
 
   @override
