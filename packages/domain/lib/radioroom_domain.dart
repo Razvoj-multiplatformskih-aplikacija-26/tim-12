@@ -4,6 +4,7 @@
 library radioroom_domain;
 
 export 'src/ids.dart';
+export 'src/playback.dart';
 export 'src/proposal.dart';
 export 'src/proposal_status.dart';
 export 'src/room.dart';

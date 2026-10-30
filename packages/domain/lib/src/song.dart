@@ -7,13 +7,22 @@
 // sa dva linka i dalje je ista pesma za pravilo "nije pustena u poslednjih
 // sat" (cooldown).
 final class Song {
-  const Song({required this.title, required this.artist, this.externalLink});
+  const Song({
+    required this.title,
+    required this.artist,
+    this.externalLink,
+    this.durationMs,
+  });
 
   final String title;
   final String artist;
 
-  /// Spoljni link za pustanje. Opciono u KT1; van jednakosti (vidi iznad).
+  /// Spoljni link za pustanje. Opciono u KT1; van jednakosti (vidi ispod).
   final String? externalLink;
+
+  /// Trajanje u milisekundama, opciono — za progress bar u view modu.
+  /// Van jednakosti kao i link: trajanje ne menja identitet pesme.
+  final int? durationMs;
 
   /// Ista pesma: poredjenje bez velikih/malih slova i okolnih razmaka, da se
   /// pravilo ne bi zaobilazilo razmakom ("Fuego" vs " fuego ").

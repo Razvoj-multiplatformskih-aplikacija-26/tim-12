@@ -120,6 +120,31 @@ void main() {
     });
   });
 
+  group('voteTally', () {
+    test('broji vazee glasove po predlogu; kasni i van liste se ne broje', () {
+      final late = _end.add(const Duration(seconds: 1));
+      final tally = voteTally(
+        round: _round(),
+        proposals: [_proposal('a'), _proposal('b')],
+        votes: [
+          _vote('v1', 'a'),
+          _vote('v2', 'a'),
+          _vote('v3', 'b'),
+          _vote('v4', 'a', at: late), // kasni
+          _vote('v5', 'nepostojeci'), // van liste
+        ],
+      );
+      expect(tally, {const ProposalId('a'): 2, const ProposalId('b'): 1});
+    });
+
+    test('prazan zbir bez ijednog vazeg glasa', () {
+      expect(
+        voteTally(round: _round(), proposals: [_proposal('a')], votes: []),
+        isEmpty,
+      );
+    });
+  });
+
   group('carryOver', () {
     Proposal _loser(String id, {DateTime? at}) =>
         _proposal(id, at: at).withStatus(const Rejected());

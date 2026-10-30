@@ -38,8 +38,27 @@ List<Vote> validVotes({required Round round, required List<Vote> votes}) =>
         .where((v) => v.roundId == round.id && !round.isLate(v.castAt))
         .toList();
 
-/// Razresava rundu: broji vazece glasove po predlogu, pobednik je predlog sa
-/// najvise glasova. Neresen rezultat (odluka O7): sortiranje (glasovi
+/// Broj vazecih glasova po predlogu runde — leaderboard za view mod.
+///
+/// Istu tabelu koristi i [resolveRound] (jedna prica o brojanju na oba mesta):
+/// view mod iz nje crta leaderboard, `resolveRound` iz nje bira pobednika.
+/// Glasovi za predloge van prosledjene liste ignorisu se (granica se ne veruje).
+Map<ProposalId, int> voteTally({
+  required Round round,
+  required List<Proposal> proposals,
+  required List<Vote> votes,
+}) {
+  final byId = <ProposalId, Proposal>{for (final p in proposals) p.id: p};
+  final counts = <ProposalId, int>{};
+  for (final v in validVotes(round: round, votes: votes)) {
+    if (!byId.containsKey(v.proposalId)) continue;
+    counts[v.proposalId] = (counts[v.proposalId] ?? 0) + 1;
+  }
+  return counts;
+}
+
+/// Razresava rundu: pobednik je predlog sa najvise vazecih glasova
+/// (vise u [voteTally]). Neresen rezultat (odluka O7): sortiranje (glasovi
 /// opadajuce, vreme predlaganja rastuce), pa za potpuni determinizam jos
 /// i identifikator — isti ulaz uvek daje istog pobednika.
 ///
@@ -52,11 +71,7 @@ RoundOutcome resolveRound({
   required List<Vote> votes,
 }) {
   final byId = <ProposalId, Proposal>{for (final p in proposals) p.id: p};
-  final counts = <ProposalId, int>{};
-  for (final v in validVotes(round: round, votes: votes)) {
-    if (!byId.containsKey(v.proposalId)) continue;
-    counts[v.proposalId] = (counts[v.proposalId] ?? 0) + 1;
-  }
+  final counts = voteTally(round: round, proposals: proposals, votes: votes);
   if (counts.isEmpty) return const RoundWithoutWinner();
   final ranked = counts.entries.toList()
     ..sort((a, b) {
