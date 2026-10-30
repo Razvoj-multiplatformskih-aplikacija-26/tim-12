@@ -6,14 +6,13 @@
 // pravila, nikad se ne cita sistemski sat.
 import 'ids.dart';
 import 'proposal_status.dart';
+import 'song.dart';
 
 final class Proposal {
   const Proposal({
     required this.id,
     required this.roomId,
-    required this.title,
-    required this.artist,
-    this.externalLink,
+    required this.song,
     required this.proposedBy,
     required this.proposedAt,
     required this.status,
@@ -21,11 +20,7 @@ final class Proposal {
 
   final ProposalId id;
   final RoomId roomId;
-  final String title;
-  final String artist;
-
-  /// Spoljni link (npr. YouTube) za KT3 deep-link pustanje. Opciono u KT1.
-  final String? externalLink;
+  final Song song;
   final UserId proposedBy;
   final DateTime proposedAt;
   final ProposalStatus status;
@@ -40,9 +35,7 @@ final class Proposal {
   Proposal withStatus(ProposalStatus next) => Proposal(
     id: id,
     roomId: roomId,
-    title: title,
-    artist: artist,
-    externalLink: externalLink,
+    song: song,
     proposedBy: proposedBy,
     proposedAt: proposedAt,
     status: next,
@@ -54,9 +47,7 @@ final class Proposal {
       other is Proposal &&
           other.id == id &&
           other.roomId == roomId &&
-          other.title == title &&
-          other.artist == artist &&
-          other.externalLink == externalLink &&
+          other.song == song &&
           other.proposedBy == proposedBy &&
           other.proposedAt == proposedAt &&
           sameProposalStatus(other.status, status);
@@ -65,14 +56,12 @@ final class Proposal {
   int get hashCode => Object.hash(
     id,
     roomId,
-    title,
-    artist,
-    externalLink,
+    song,
     proposedBy,
     proposedAt,
     proposalStatusHash(status),
   );
 
   @override
-  String toString() => 'Proposal($title — $artist)';
+  String toString() => 'Proposal($song)';
 }
