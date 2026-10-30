@@ -8,6 +8,7 @@ build/
 .idea/
 .vscode/
 *.iml
+.run/
 
 # OS
 .DS_Store
