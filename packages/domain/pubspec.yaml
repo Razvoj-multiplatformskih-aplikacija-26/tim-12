@@ -10,3 +10,6 @@ environment:
 
 # Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
 resolution: workspace
+
+dev_dependencies:
+  test: ^1.25.6
