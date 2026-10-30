@@ -19,6 +19,8 @@ Svi delovi su napisani u Dartu i koriste isti domenski paket sa modelima, stanji
 | Backoffice | Flutter (veb, desktop) | Moderatori: sobe, pesme, prijave, korisnici |
 | Server | Dart | Čuva podatke, sprovodi pravila, zatvara runde i bira pobednika |
 | Javni veb | Jaspr | Javne sobe, trenutno puštena pesma, istorija i top liste |
+| TV | TBA | TBA |
+| Car app | TBA | TBA |
 
 ## Ispunjenost zahteva
 Postoje tri uloge: **slušalac** predlaže pesme i glasa, **host/DJ** otvara sobu, podešava trajanje runde i pušta pobedničku pesmu, a **moderator** u backoffice-u uklanja neprimerene predloge, zatvara sobe i blokira korisnike.
@@ -26,8 +28,35 @@ Postoje tri uloge: **slušalac** predlaže pesme i glasa, **host/DJ** otvara sob
 ### 2. Stanja
 Glavni pojam je **predlog pesme**. On prolazi kroz stanja *predložena → u glasanju → pobednik → puštena*, a može završiti i kao *odbijena* (izgubila rundu) ili *uklonjena* (uklonio ju je moderator ili host). Soba ima sopstvena stanja: *otvorena*, *pauzirana* i *zatvorena*.
 
+Domenska šema (paket `packages/domain`, zajednički za sve klijente):
+
+```text
+POJMOVI I VEZE
+
+User (prikazno ime) ── predlaže ──────► Proposal ── nosi ──► Song (naslov, izvođač, spoljni link*)
+                          ▲   │
+                     za   │   │ takmiči se u
+                          │   ▼
+Vote (ko, kad) ───────────┘  Round (početak, kraj) ── u ──► Room (naziv, host)
+
+* opciono — priprema KT3 deep-link puštanja
+```
+
+```text
+STANJA PREDLOGA (canTransition)
+
+ predložena ──► u glasanju ──► pobednik ──► puštena
+                  │              │
+                  │              └────────────► uklonjena ◄─── (i iz "predložena")
+                  └─► odbijena
+                         │
+                         └─ carryOver: sa bar 1 glasom vraća se u sledeću rundu
+                            kao NOVA "predložena" (nov ID, novo vreme; kap 5 po rangu;
+                            bez glasova ispada)
+```
+
 ### 3. Pravila
-Svaki slušalac ima jedan glas po rundi, najviše 3 aktivna predloga i ne može predložiti pesmu koja je puštena u poslednjih sat vremena. Pobednika određuju glasovi svih slušalaca u sobi, pa ga konačno bira server kada runda istekne. Ako je rezultat nerešen, pobeđuje ranije predložena pesma. Glas koji stigne posle zatvaranja runde se odbacuje.
+Svaki slušalac ima jedan glas po rundi, najviše 3 aktivna predloga i ne može predložiti pesmu koja je puštena u poslednjih sat vremena. Pobednika određuju glasovi svih slušalaca u sobi, pa ga konačno bira server kada runda istekne. Ako je rezultat nerešen, pobeđuje ranije predložena pesma. Glas koji stigne posle zatvaranja runde se odbacuje. Predlozi koji su izgubili rundu, a imali su bar jedan glas, vraćaju se u sledeću rundu kao novi predlozi (najviše 5, po rangu iz izgubljene runde).
 
 ### 4. Rad bez mreže
 Slušalac može predložiti pesmu i bez mreže. Predlog se čuva lokalno i šalje serveru kad se veza vrati: ulazi u tekuću rundu ako je još otvorena, a ako nije, u sledeću. Host bez mreže može označiti pesmu kao puštenu, a ta promena se sinhronizuje naknadno.
