@@ -119,4 +119,111 @@ void main() {
       expect((outcome as RoundWinner).voteCount, 1);
     });
   });
+
+  group('carryOver', () {
+    Proposal _loser(String id, {DateTime? at}) =>
+        _proposal(id, at: at).withStatus(const Rejected());
+
+    ProposalId _next(Proposal p) => ProposalId('${p.id.value}-n');
+
+    final _now = _end.add(const Duration(minutes: 1));
+
+    test('prenosi gubitnike sa glasovima, ispušta bez glasova', () {
+      final carried = carryOver(
+        rejected: [_loser('a'), _loser('b'), _loser('c')],
+        round: _round(),
+        votes: [_vote('v1', 'a'), _vote('v2', 'b')],
+        newIdFor: _next,
+        now: _now,
+      );
+      expect(carried.map((p) => p.id.value), ['a-n', 'b-n']);
+    });
+
+    test('kap seče po rangu: top 3 od 5 sa glasovima', () {
+      final losers = [
+        _loser('a', at: _start.add(const Duration(minutes: 10))),
+        _loser('b', at: _start.add(const Duration(minutes: 9))),
+        _loser('c', at: _start),
+        _loser('d', at: _start.add(const Duration(minutes: 1))),
+        _loser('e', at: _start.add(const Duration(minutes: 2))),
+      ];
+      final carried = carryOver(
+        rejected: losers,
+        round: _round(),
+        votes: [
+          _vote('v1', 'a'),
+          _vote('v2', 'a'),
+          _vote('v3', 'a'),
+          _vote('v4', 'b'),
+          _vote('v5', 'b'),
+          _vote('v6', 'c'),
+          _vote('v7', 'd'),
+          _vote('v8', 'e'),
+        ],
+        newIdFor: _next,
+        now: _now,
+        maxCarry: 3,
+      );
+      // a(3), b(2), pa c kao najraniji medju izjednacenima sa 1 glasom.
+      expect(carried.map((p) => p.id.value), ['a-n', 'b-n', 'c-n']);
+    });
+
+    test('kopija je sveža: now, nov ID, isti song, status Proposed', () {
+      final loser = _loser('a');
+      final carried = carryOver(
+        rejected: [loser],
+        round: _round(),
+        votes: [_vote('v1', 'a')],
+        newIdFor: _next,
+        now: _now,
+      );
+      expect(carried, hasLength(1));
+      final copy = carried.single;
+      expect(copy.id, isNot(loser.id));
+      expect(copy.proposedAt, _now);
+      expect(copy.song, loser.song);
+      expect(copy.roomId, loser.roomId);
+      expect(copy.proposedBy, loser.proposedBy);
+      expect(copy.status, isA<Proposed>());
+    });
+
+    test('ne-Rejected u ulazu se ignoriše; maxCarry 0 gasi prenos', () {
+      final notLoser = _proposal('x');
+      expect(
+        carryOver(
+          rejected: [notLoser],
+          round: _round(),
+          votes: [_vote('v1', 'x')],
+          newIdFor: _next,
+          now: _now,
+        ),
+        isEmpty,
+      );
+      expect(
+        carryOver(
+          rejected: [_loser('a')],
+          round: _round(),
+          votes: [_vote('v1', 'a')],
+          newIdFor: _next,
+          now: _now,
+          maxCarry: 0,
+        ),
+        isEmpty,
+      );
+    });
+
+    test('kasni glas ne nosi nikoga', () {
+      final late = _end.add(const Duration(seconds: 1));
+      expect(
+        carryOver(
+          rejected: [_loser('a')],
+          round: _round(),
+          votes: [_vote('v1', 'a', at: late)],
+          newIdFor: _next,
+          now: _now,
+        ),
+        isEmpty,
+      );
+    });
+  });
 }

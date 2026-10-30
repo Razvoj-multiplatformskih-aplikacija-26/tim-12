@@ -7,6 +7,7 @@
 // granica buduce selidbe na server vidi se golim okom.
 import '../ids.dart';
 import '../proposal.dart';
+import '../proposal_status.dart';
 import '../round.dart';
 import '../vote.dart';
 
@@ -69,4 +70,54 @@ RoundOutcome resolveRound({
     });
   final first = ranked.first;
   return RoundWinner(proposal: byId[first.key]!, voteCount: first.value);
+}
+
+/// Prenos gubitnika u sledecu rundu ("druga sansa").
+///
+/// Gubitnik sa podrskom (bar 1 vazeci glas) vraca se kao SVEZ predlog: novi
+/// ID (od [newIdFor]), sadasnji [now] kao `proposedAt`, isti song/soba/
+/// predlagac, status `Proposed`. Nula glasova i fer tie-break dobijaju se
+/// strukturom (glasovi su vezani za rundu i stari ID), bez ikakvog koda za
+/// reset. Gubitnik bez glasova ispada; ne-`Rejected` u ulazu ignorise se.
+///
+/// Redosled: rang runde (glasovi opadajuce, vreme rastuce, ID), pa kap
+/// [maxCarry] (default 5; 0 = prenos iskljucen, u KT2 se seli u RoomSettings).
+/// ID-jeve donosi pozivalac (u KT2 server sa UUID) — domen ih ne izmislja.
+List<Proposal> carryOver({
+  required List<Proposal> rejected,
+  required Round round,
+  required List<Vote> votes,
+  required ProposalId Function(Proposal former) newIdFor,
+  required DateTime now,
+  int maxCarry = 5,
+}) {
+  assert(maxCarry >= 0, 'maxCarry ne moze biti negativan');
+  if (maxCarry == 0) return const [];
+  final counts = <ProposalId, int>{};
+  for (final v in validVotes(round: round, votes: votes)) {
+    counts[v.proposalId] = (counts[v.proposalId] ?? 0) + 1;
+  }
+  final ranked = rejected
+      .where((p) => p.status is Rejected && (counts[p.id] ?? 0) > 0)
+      .toList()
+    ..sort((a, b) {
+      final byVotes = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
+      if (byVotes != 0) return byVotes;
+      final byTime = a.proposedAt.compareTo(b.proposedAt);
+      if (byTime != 0) return byTime;
+      return a.id.value.compareTo(b.id.value);
+    });
+  return ranked
+      .take(maxCarry)
+      .map(
+        (p) => Proposal(
+          id: newIdFor(p),
+          roomId: p.roomId,
+          song: p.song,
+          proposedBy: p.proposedBy,
+          proposedAt: now,
+          status: const Proposed(),
+        ),
+      )
+      .toList();
 }
