@@ -10,6 +10,7 @@
 import '../ids.dart';
 import '../proposal.dart';
 import '../proposal_status.dart';
+import '../song.dart';
 import '../vote.dart';
 
 /// Ishod provere pravila: ili vazi, ili nosi tacan razlog.
@@ -57,15 +58,19 @@ final class TooManyActiveProposals extends ProposalRuleError {
 
 /// Pesma je pustena nedavno — re-predlog je zabranjen dok ne istekne rok.
 final class RecentlyPlayedSong extends ProposalRuleError {
-  RecentlyPlayedSong({
-    required this.title,
-    required this.artist,
-    required this.playedAt,
-  });
+  RecentlyPlayedSong({required this.song, required this.playedAt});
 
-  final String title;
-  final String artist;
+  final Song song;
   final DateTime playedAt;
+}
+
+/// Glas za predlog koji nije u glasanju (npr. tek predlozen, vec odbjen
+/// ili vec pusten). Pronadjeno poredjenjem sa Festify: oni to imaju
+/// strukturno (glasuje se samo za numere u redu); mi pravilom nad statusom.
+final class InvalidVoteTarget extends ProposalRuleError {
+  const InvalidVoteTarget({required this.proposalId});
+
+  final ProposalId proposalId;
 }
 
 /// Slusalac je u ovoj rundi vec glasao.
@@ -96,11 +101,10 @@ RuleOutcome checkMaxActiveProposals({
 }
 
 /// Zabranjuje re-predlog pesme pustene u poslednjih [cooldown] (odluka O5:
-/// 1 sat, kao u README). Poredi se normalizovano (bez velikih/malih slova
-/// i okolnih razmaka); trenutak pustanja cita se iz statusa `Played`.
+/// 1 sat, kao u README). "Ista pesma" je `Song.==` (normalizovano);
+/// trenutak pustanja cita se iz statusa `Played`.
 RuleOutcome checkNotRecentlyPlayed({
-  required String title,
-  required String artist,
+  required Song song,
   required List<Proposal> played,
   required DateTime now,
   Duration cooldown = const Duration(hours: 1),
@@ -108,17 +112,23 @@ RuleOutcome checkNotRecentlyPlayed({
   for (final p in played) {
     final status = p.status;
     if (status is! Played) continue;
-    if (!_sameSong(p.title, p.artist, title, artist)) continue;
+    if (!p.song.isSameSong(song)) continue;
     if (status.playedAt.isAfter(now)) continue;
     if (now.difference(status.playedAt) < cooldown) {
       return RuleInvalid(
-        RecentlyPlayedSong(
-          title: p.title,
-          artist: p.artist,
-          playedAt: status.playedAt,
-        ),
+        RecentlyPlayedSong(song: p.song, playedAt: status.playedAt),
       );
     }
+  }
+  return const RuleValid();
+}
+
+/// Glas vazi samo za predlog koji je u glasanju. Glas za tek predlozenu,
+/// pobednicku (van runde), pustenu, odbijenu ili uklonjenu pesmu odbija se —
+/// pre brojanjem u `resolveRound`, da nevazeci glas nikad ne udje u zbir.
+RuleOutcome checkVoteTarget({required Proposal proposal}) {
+  if (proposal.status is! InVoting) {
+    return RuleInvalid(InvalidVoteTarget(proposalId: proposal.id));
   }
   return const RuleValid();
 }
@@ -139,9 +149,3 @@ RuleOutcome checkSingleVotePerRound({
   }
   return const RuleValid();
 }
-
-bool _sameSong(String aTitle, String aArtist, String bTitle, String bArtist) =>
-    _normalized(aTitle) == _normalized(bTitle) &&
-    _normalized(aArtist) == _normalized(bArtist);
-
-String _normalized(String value) => value.trim().toLowerCase();
