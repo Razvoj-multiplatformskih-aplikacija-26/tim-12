@@ -1,0 +1,38 @@
+name: radioroom_ui
+description: RadioRoom zajednicki UI (tema, font, prikaz stanja, poruke pravila) za mobilnu i backoffice.
+version: 0.1.0
+
+# Privatan paket: nikad se ne objavljuje na pub.dev.
+publish_to: none
+
+environment:
+  sdk: ^3.10.0
+
+# Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
+resolution: workspace
+
+# Flutter je ovde dozvoljen: zabrana vazi samo za `domain` i `blocs`.
+dependencies:
+  flutter:
+    sdk: flutter
+  radioroom_domain:
+    path: ../domain
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  # Font kao asset (ne runtime `google_fonts`): radi bez mreze i isto na
+  # svim platformama. Licenca: fonts/OFL.txt.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: fonts/Inter-Regular.ttf
+        - asset: fonts/Inter-Medium.ttf
+          weight: 500
+        - asset: fonts/Inter-SemiBold.ttf
+          weight: 600
+        - asset: fonts/Inter-Bold.ttf
+          weight: 700

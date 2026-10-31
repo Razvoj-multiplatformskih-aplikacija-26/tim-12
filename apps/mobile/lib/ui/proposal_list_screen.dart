@@ -9,9 +9,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
-
-import 'proposal_status_label.dart';
-import 'rule_messages.dart';
+import 'package:radioroom_ui/radioroom_ui.dart';
 
 class ProposalListScreen extends StatelessWidget {
   const ProposalListScreen({super.key, this.onSimulateError});
@@ -200,12 +198,7 @@ class _ProposalTile extends StatelessWidget {
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(
-            '$votes',
-            style: const TextStyle(
-              fontFeatures: [FontFeature.tabularFigures()],
-            ),
-          ),
+          Text('$votes', style: tabularFigures),
           const SizedBox(width: 4),
           const Icon(Icons.thumb_up_outlined, size: 16),
           // Dugme samo za predloge u glasanju (prikaz); vazenje glasa i
