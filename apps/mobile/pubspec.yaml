@@ -43,6 +43,7 @@ dependencies:
     path: ../../packages/domain
   radioroom_blocs:
     path: ../../packages/blocs
+  flutter_bloc: ^9.1.1
 
 dev_dependencies:
   flutter_test:
