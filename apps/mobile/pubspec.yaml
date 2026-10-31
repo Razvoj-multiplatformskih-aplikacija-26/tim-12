@@ -46,6 +46,7 @@ dependencies:
   radioroom_ui:
     path: ../../packages/ui
   flutter_bloc: ^9.1.1
+  go_router: ^18.1.2
 
 dev_dependencies:
   flutter_test:
