@@ -79,7 +79,7 @@ cd apps/mobile
 flutter run              # mobilna aplikacija (Android/iOS)
 flutter run -d chrome    # mobilna u pregledacu (bez emulatora)
 cd ../backoffice
-flutter run              # backoffice (Linux desktop; za veb: flutter run -d chrome)
+flutter run              # backoffice (Linux/macOS desktop; za veb: flutter run -d chrome)
 ```
 
-Za veb pokretanje potreban je Chrome/Chromium (`CHROME_EXECUTABLE` pokazuje na njega ako nije na podrazumevanoj putanji). Android emulator zahteva Android SDK (uputstvo: `flutter doctor`).
+Za veb pokretanje potreban je Chrome/Chromium (`CHROME_EXECUTABLE` pokazuje na njega ako nije na podrazumevanoj putanji). Android emulator zahteva Android SDK (uputstvo: `flutter doctor`). macOS desktop i iOS simulator zahtevaju Xcode 15 ili noviji.
