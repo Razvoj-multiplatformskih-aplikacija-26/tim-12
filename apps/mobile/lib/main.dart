@@ -1,12 +1,24 @@
+// Mesto sastavljanja aplikacije: jedino mesto koje zna koja implementacija
+// porta se koristi.
+//
+// Zamena laznog repozitorijuma (npr. klijentom servera u KT2) menja samo
+// ovaj fajl — ekran zna samo za Bloc i ne menja se.
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:radioroom_blocs/radioroom_blocs.dart';
+
+import 'data/demo_room.dart';
+import 'data/fake_proposal_repository.dart';
+import 'ui/proposal_list_screen.dart';
 
 void main() {
-  runApp(const RadioRoomApp());
+  runApp(RadioRoomApp(repository: FakeProposalRepository()));
 }
 
-/// Privremeni pocetni ekran; pravi tok slusaoca stize u celini "mobilna aplikacija".
 class RadioRoomApp extends StatelessWidget {
-  const RadioRoomApp({super.key});
+  const RadioRoomApp({super.key, required this.repository});
+
+  final FakeProposalRepository repository;
 
   @override
   Widget build(BuildContext context) {
@@ -15,9 +27,14 @@ class RadioRoomApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: .fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: const Scaffold(
-        body: Center(
-          child: Text('RadioRoom — slusalac (uskoro: soba i glasanje)'),
+      home: BlocProvider(
+        create: (_) => ProposalListBloc(
+          repository: repository,
+          roomId: demoRoomId,
+          currentUser: demoUser,
+        )..add(const ProposalsRequested()),
+        child: ProposalListScreen(
+          onSimulateError: () => repository.failNext = true,
         ),
       ),
     );
