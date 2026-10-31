@@ -1,7 +1,7 @@
 # Tim 12
 
 # Opis sistema
-**RadioRoom** je sistem za zajedničko biranje muzike u realnom vremenu. Slušaoci se pridružuju sobi, predlažu pesme i glasaju koja će biti sledeća. Kada runda glasanja istekne, server proglašava pobednika. Host (DJ) pušta pobednika na svom uređaju preko spoljne aplikacije (npr. YouTube) putem deep linka, a pritom en izlazi iz glasanja: sledeća runda počinje odmah. Backoffice služi moderatorima za upravljanje sobama, pesmama i korisnicima.
+**RadioRoom** je sistem za zajedničko biranje muzike u realnom vremenu. Slušaoci se pridružuju sobi, predlažu pesme i glasaju koja će biti sledeća. Kada runda glasanja istekne, server proglašava pobednika. Host (DJ) pušta pobednika na svom uređaju preko spoljne aplikacije (npr. YouTube) putem deep linka, a pritom ne izlazi iz glasanja: sledeća runda počinje odmah. Backoffice služi moderatorima za upravljanje sobama, pesmama i korisnicima.
 
 ## Tim
  Ime i prezime | Broj indeksa | GitHub |
@@ -23,6 +23,8 @@ Svi delovi su napisani u Dartu i koriste isti domenski paket sa modelima, stanji
 | Car app | TBA | TBA |
 
 ## Ispunjenost zahteva
+
+### 1. Uloge
 Postoje tri uloge: **slušalac** predlaže pesme i glasa, **host/DJ** otvara sobu, podešava trajanje runde i pušta pobedničku pesmu, a **moderator** u backoffice-u uklanja neprimerene predloge, zatvara sobe i blokira korisnike.
 
 ### 2. Stanja
@@ -69,12 +71,13 @@ Javne sobe, pesma koja se trenutno pušta, istorija puštenih pesama i nedeljne 
 
 ## Pokretanje
 
-Uslov: Flutter SDK (Dart ≥ 3.13). Provereno sa Flutter 3.47.8.
+Uslov: Flutter SDK (Dart ≥ 3.10). Provereno sa Flutter 3.47.8.
 
 ```sh
 flutter pub get          # iz korena: resava sve pakete odjednom (jedan pubspec.lock)
 cd apps/mobile
 flutter run              # mobilna aplikacija (Android/iOS)
+flutter run -d chrome    # mobilna u pregledacu (bez emulatora)
 cd ../backoffice
 flutter run              # backoffice (Linux desktop; za veb: flutter run -d chrome)
 ```

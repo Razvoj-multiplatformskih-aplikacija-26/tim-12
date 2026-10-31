@@ -1,7 +1,7 @@
 // Deljeni domenski paket sistema RadioRoom.
 //
 // Ovde zive modeli (predlog pesme, soba, ...), stanja i pravila.
-library radioroom_domain;
+library;
 
 export 'src/ids.dart';
 export 'src/playback.dart';
