@@ -69,7 +69,7 @@ Javne sobe, pesma koja se trenutno pušta, istorija puštenih pesama i nedeljne 
 
 ## Pokretanje
 
-Uslov: Flutter SDK (Dart ≥ 3.6). Provereno sa Flutter 3.47.8.
+Uslov: Flutter SDK (Dart ≥ 3.13). Provereno sa Flutter 3.47.8.
 
 ```sh
 flutter pub get          # iz korena: resava sve pakete odjednom (jedan pubspec.lock)
