@@ -146,31 +146,31 @@ void main() {
   });
 
   group('carryOver', () {
-    Proposal _loser(String id, {DateTime? at}) =>
+    Proposal lostProposal(String id, {DateTime? at}) =>
         _proposal(id, at: at).withStatus(const Rejected());
 
-    ProposalId _next(Proposal p) => ProposalId('${p.id.value}-n');
+    ProposalId nextId(Proposal p) => ProposalId('${p.id.value}-n');
 
-    final _now = _end.add(const Duration(minutes: 1));
+    final afterEnd = _end.add(const Duration(minutes: 1));
 
     test('prenosi gubitnike sa glasovima, ispušta bez glasova', () {
       final carried = carryOver(
-        rejected: [_loser('a'), _loser('b'), _loser('c')],
+        rejected: [lostProposal('a'), lostProposal('b'), lostProposal('c')],
         round: _round(),
         votes: [_vote('v1', 'a'), _vote('v2', 'b')],
-        newIdFor: _next,
-        now: _now,
+        newIdFor: nextId,
+        now: afterEnd,
       );
       expect(carried.map((p) => p.id.value), ['a-n', 'b-n']);
     });
 
     test('kap seče po rangu: top 3 od 5 sa glasovima', () {
       final losers = [
-        _loser('a', at: _start.add(const Duration(minutes: 10))),
-        _loser('b', at: _start.add(const Duration(minutes: 9))),
-        _loser('c', at: _start),
-        _loser('d', at: _start.add(const Duration(minutes: 1))),
-        _loser('e', at: _start.add(const Duration(minutes: 2))),
+        lostProposal('a', at: _start.add(const Duration(minutes: 10))),
+        lostProposal('b', at: _start.add(const Duration(minutes: 9))),
+        lostProposal('c', at: _start),
+        lostProposal('d', at: _start.add(const Duration(minutes: 1))),
+        lostProposal('e', at: _start.add(const Duration(minutes: 2))),
       ];
       final carried = carryOver(
         rejected: losers,
@@ -185,8 +185,8 @@ void main() {
           _vote('v7', 'd'),
           _vote('v8', 'e'),
         ],
-        newIdFor: _next,
-        now: _now,
+        newIdFor: nextId,
+        now: afterEnd,
         maxCarry: 3,
       );
       // a(3), b(2), pa c kao najraniji medju izjednacenima sa 1 glasom.
@@ -194,18 +194,18 @@ void main() {
     });
 
     test('kopija je sveža: now, nov ID, isti song, status Proposed', () {
-      final loser = _loser('a');
+      final loser = lostProposal('a');
       final carried = carryOver(
         rejected: [loser],
         round: _round(),
         votes: [_vote('v1', 'a')],
-        newIdFor: _next,
-        now: _now,
+        newIdFor: nextId,
+        now: afterEnd,
       );
       expect(carried, hasLength(1));
       final copy = carried.single;
       expect(copy.id, isNot(loser.id));
-      expect(copy.proposedAt, _now);
+      expect(copy.proposedAt, afterEnd);
       expect(copy.song, loser.song);
       expect(copy.roomId, loser.roomId);
       expect(copy.proposedBy, loser.proposedBy);
@@ -219,18 +219,18 @@ void main() {
           rejected: [notLoser],
           round: _round(),
           votes: [_vote('v1', 'x')],
-          newIdFor: _next,
-          now: _now,
+          newIdFor: nextId,
+          now: afterEnd,
         ),
         isEmpty,
       );
       expect(
         carryOver(
-          rejected: [_loser('a')],
+          rejected: [lostProposal('a')],
           round: _round(),
           votes: [_vote('v1', 'a')],
-          newIdFor: _next,
-          now: _now,
+          newIdFor: nextId,
+          now: afterEnd,
           maxCarry: 0,
         ),
         isEmpty,
@@ -241,11 +241,11 @@ void main() {
       final late = _end.add(const Duration(seconds: 1));
       expect(
         carryOver(
-          rejected: [_loser('a')],
+          rejected: [lostProposal('a')],
           round: _round(),
           votes: [_vote('v1', 'a', at: late)],
-          newIdFor: _next,
-          now: _now,
+          newIdFor: nextId,
+          now: afterEnd,
         ),
         isEmpty,
       );

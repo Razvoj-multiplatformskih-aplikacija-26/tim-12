@@ -1,0 +1,2 @@
+# Preporucena Dart pravila (cist Dart paket, bez Flutter-a).
+include: package:lints/recommended.yaml
