@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/tim-12.iml" filepath="$PROJECT_DIR$/.idea/tim-12.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/mobile/radioroom_mobile.iml" filepath="$PROJECT_DIR$/apps/mobile/radioroom_mobile.iml" />
+      <module fileurl="file://$PROJECT_DIR$/apps/backoffice/radioroom_backoffice.iml" filepath="$PROJECT_DIR$/apps/backoffice/radioroom_backoffice.iml" />
+      <module fileurl="file://$PROJECT_DIR$/packages/domain/radioroom_domain.iml" filepath="$PROJECT_DIR$/packages/domain/radioroom_domain.iml" />
+      <module fileurl="file://$PROJECT_DIR$/packages/blocs/radioroom_blocs.iml" filepath="$PROJECT_DIR$/packages/blocs/radioroom_blocs.iml" />
+    </modules>
+  </component>
+</project>
