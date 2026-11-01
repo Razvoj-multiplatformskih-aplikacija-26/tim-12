@@ -117,7 +117,13 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1');
-    await tester.scrollUntilVisible(find.text('Under Pressure'), 200);
+    // Glasaj tab je u TabBarView-u (dva ugnjezdena Scrollable-a):
+    // skroluje se unutrasnja lista, ne bar.
+    await tester.scrollUntilVisible(
+      find.text('Under Pressure'),
+      200,
+      scrollable: find.byType(Scrollable).at(1),
+    );
     final tile = find.ancestor(
       of: find.text('Under Pressure'),
       matching: find.byType(ListTile),

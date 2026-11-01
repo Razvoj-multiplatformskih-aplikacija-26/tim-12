@@ -94,22 +94,7 @@ class ProposalListScreen extends StatelessWidget {
           ),
         },
       ),
-      // Dugme samo kad su podaci sobe tu; forma ima svoju adresu.
-      floatingActionButton:
-          BlocSelector<ProposalListBloc, ProposalListState, RoomId?>(
-            selector: (state) => switch (state) {
-              ProposalsLoaded(:final snapshot) ||
-              ProposalsEmpty(:final snapshot) => snapshot.room.id,
-              _ => null,
-            },
-            builder: (context, roomId) => roomId != null
-                ? FloatingActionButton.extended(
-                    onPressed: () => context.go(newProposalPath(roomId)),
-                    icon: const Icon(Icons.add),
-                    label: const Text('Predloži pesmu'),
-                  )
-                : const SizedBox.shrink(),
-          ),
+      // Bez svog FAB-a: skoljka sobe daje jedan zajednicki (→ Pretraga tab).
     );
   }
 }

@@ -20,7 +20,7 @@ import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'ui/new_proposal_screen.dart';
 import 'ui/proposal_detail_screen.dart';
-import 'ui/proposal_list_screen.dart';
+import 'ui/room_shell.dart';
 import 'ui/rooms_screen.dart';
 
 GoRouter createRouter({
@@ -57,8 +57,9 @@ GoRouter createRouter({
       },
       routes: [
         GoRoute(
+          // Skoljka sobe: tabovi Pretraga | Glasaj | Trenutno (swipe + bar).
           path: '/soba/:roomId',
-          builder: (_, state) => ProposalListScreen(
+          builder: (_, state) => RoomShell(
             roomId: RoomId(state.pathParameters['roomId']!),
             currentUser: currentUser,
             rooms: rooms,

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_mobile/data/demo_room.dart';
-import 'package:radioroom_mobile/ui/proposal_list_screen.dart';
+import 'package:radioroom_mobile/ui/room_shell.dart';
 
 const _delay = Duration(milliseconds: 100);
 final _now = DateTime(2026, 10, 31, 20);
@@ -84,7 +84,8 @@ Future<void> _pumpScreen(WidgetTester tester, _TestRepository repo) =>
             currentUser: demoUser,
             clock: () => _now,
           )..add(const ProposalsRequested()),
-          child: const ProposalListScreen(
+          // Lista zivi u skoljkci sobe (Glasaj tab); FAB i bar stizu odatle.
+          child: const RoomShell(
             roomId: demoRoomId,
             currentUser: demoUser,
           ),
