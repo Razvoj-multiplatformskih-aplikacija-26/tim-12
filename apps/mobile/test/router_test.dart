@@ -158,6 +158,25 @@ void main() {
     });
   });
 
+  testWidgets('strelica nazad i sistemski back vode na sobe', (tester) async {
+    final router = await _start(tester, '/soba/r1');
+    expect(find.text('Petak u Studentskom'), findsOneWidget);
+
+    // Strelica u zajednickom AppBar-u (ista na sva tri taba).
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(_location(router), '/sobe');
+
+    // Sistemski back sa taba takodje vodi na sobe, ne iz aplikacije.
+    // (Ne preko pageBack: on trazi BackButton widget, a skoljkа ima svoju
+    // strelicu — simulira se sistemski dogadjaj.)
+    router.go('/soba/r1');
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(_location(router), '/sobe');
+  });
+
   testWidgets('home: prelaz u praznu sobu kroz Pridruzi se, predlog iz pretrage', (
     tester,
   ) async {

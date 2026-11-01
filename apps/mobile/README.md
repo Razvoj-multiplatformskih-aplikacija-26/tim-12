@@ -28,6 +28,7 @@ Platforme (Android, iOS, veb) već postoje — `flutter create` nije potreban i 
 Nepoznata adresa prikazuje „Ova stranica ne postoji.“ sa povratkom na sobe.
 
 Tabovi sobe su stanje ekrana (jedna adresa); Glasaj je podrazumevani (sredina).
+Strelica nazad u vrhu sobe (i sistemski back) vode na `/sobe`.
 
 ## Gde šta živi
 
@@ -56,7 +57,7 @@ Dve demo sobe + lokalno napravljene; prelaz između njih je tab „Pridruži se�
 
 Ekran glavnog toka (Glasaj tab) pokazuje sva 4 stanja: učitavanje (korak 1), podaci (1), prazan prikaz (6) i grešku sa „Pokušaj ponovo“ (7).
 
-1. **Učitavanje → podaci:** `/sobe` → „Pridruži se“ → „Petak u Studentskom“ → spinner (~800 ms), pa Glasaj tab: kartica pobednika, lista glasanja sa brojem glasova; oznaka „Tvoj predlog“ na Đurđevdanu (u glasanju) i Mesečini (u „Na čekanju“).
+1. **Učitavanje → podaci:** `/sobe` → „Pridruži se“ → „Petak u Studentskom“ → spinner (~800 ms), pa Glasaj tab: skroz gore kartica sledeće pesme (ikonica pobednika), ispod lista glasanja sa rednim brojevima i brojem glasova; oznaka „Tvoj predlog“ pored naziva, crtica za „Na čekanju“. Swipe na Trenutno: veliki cover, izvođač + album, traka runde i dugmad ka platformama (KT1: samo „Bohemian Rhapsody“ ima cover i prave linkove — Spotify, YouTube Music, YouTube, Deezer).
 2. **Detalj:** dodir na red otvara `/soba/r1/predlog/<id>` (ko predlaže, vreme, glasovi; link ako ga pesma ima); strelica nazad vraća listu.
 3. **Akcija sa potvrdom:** „Glasaj“ na predlogu u glasanju → dijalog → broj glasova raste. Drugi glas → SnackBar „Tvoj glas u ovoj rundi je već zabeležen.“ (pravilo iz domena).
 4. **Pretraga:** FAB „Predloži pesmu“ → Pretraga tab sa otvorenom tastaturom. Kucanje „queen“ pokazuje postojeće (Bohemian) i katalog bez duplikata (Under Pressure). „Predloži“ → povratak na Glasaj. Katalog pesma + pravilo: dva predloga prolaze, treći daje SnackBar limita (pravilo iz domena).

@@ -23,65 +23,32 @@ class ProposalListScreen extends StatelessWidget {
     super.key,
     required this.roomId,
     required this.currentUser,
-    this.onSimulateError,
   });
 
   /// Soba iz adrese.
   final RoomId roomId;
 
   /// Tekuci korisnik (u KT1 fiksan; u KT2 ga daje prijava) — za oznaku
-  /// "Tvoj predlog".
+  /// predloga tekuceg korisnika.
   final UserId currentUser;
-
-  /// Okidac greske sledeceg zahteva. Daje ga mesto sastavljanja aplikacije
-  /// (`main.dart`); bez njega stavka menija se ne prikazuje, pa zamena
-  /// implementacije porta ne menja ovaj ekran.
-  final VoidCallback? onSimulateError;
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: BlocSelector<ProposalListBloc, ProposalListState, String>(
-          selector: (state) => switch (state) {
-            ProposalsLoaded(:final snapshot) ||
-            ProposalsEmpty(:final snapshot) => snapshot.room.name,
-            _ => 'RadioRoom',
-          },
-          builder: (_, title) => Text(title),
+    // Bez svog Scaffold-a i AppBar-a: skoljka sobe daje jedan zajednicki
+    // (nazad + naziv + meni) za sva tri taba, kao i FAB.
+    return BlocBuilder<ProposalListBloc, ProposalListState>(
+      builder: (context, state) => switch (state) {
+        ProposalsInitial() || ProposalsLoading() => const Center(
+          child: CircularProgressIndicator(),
         ),
-        actions: [
-          // Prelaz medju sobama zivi na home-u (/sobe); ovde je samo
-          // okidac greske za probu porta.
-          if (onSimulateError != null)
-            PopupMenuButton<void>(
-              itemBuilder: (_) => [
-                PopupMenuItem(
-                  onTap: onSimulateError,
-                  child: const ListTile(
-                    leading: Icon(Icons.error_outline),
-                    title: Text('Simuliraj grešku'),
-                  ),
-                ),
-              ],
-            ),
-        ],
-      ),
-      body: BlocBuilder<ProposalListBloc, ProposalListState>(
-        builder: (context, state) => switch (state) {
-          ProposalsInitial() || ProposalsLoading() => const Center(
-            child: CircularProgressIndicator(),
-          ),
-          ProposalsError() => const RoomErrorView(),
-          ProposalsEmpty() => const _EmptyView(),
-          ProposalsLoaded(:final snapshot, :final tally) => _ProposalList(
-            snapshot: snapshot,
-            tally: tally,
-            currentUser: currentUser,
-          ),
-        },
-      ),
-      // Bez svog FAB-a: skoljka sobe daje jedan zajednicki (→ Pretraga tab).
+        ProposalsError() => const RoomErrorView(),
+        ProposalsEmpty() => const _EmptyView(),
+        ProposalsLoaded(:final snapshot, :final tally) => _ProposalList(
+          snapshot: snapshot,
+          tally: tally,
+          currentUser: currentUser,
+        ),
+      },
     );
   }
 }
@@ -118,9 +85,10 @@ class _ProposalList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Samo ono o cemu se glasa ili ce se glasati: pobednik, u glasanju
-    // (sortirano kao tie-break u domenu: glasovi opadajuce, vreme rastuce)
-    // i predlozeni na cekanju. Rejected/Removed se ne crtaju nigde.
+    // Samo ono o cemu se glasa ili ce se glasati: sledeca pesma (pobednik)
+    // na vrhu, predlozi u glasanju sortirani kao tie-break u domenu
+    // (glasovi opadajuce, vreme rastuce) i predlozeni na cekanju.
+    // Rejected/Removed se ne crtaju nigde.
     final inVoting = snapshot.proposals
         .where((p) => p.status is InVoting)
         .toList()
@@ -133,28 +101,21 @@ class _ProposalList extends StatelessWidget {
         .where((p) => p.status is Proposed)
         .toList();
     final winner = snapshot.proposals.where((p) => p.status is Winner);
-    final nowPlaying = currentPlaying(
-      proposals: snapshot.proposals,
-      now: DateTime.now(),
-    );
     return ListView(
       // Mesto ispod poslednjeg reda da ga FAB ne prekrije.
       padding: const EdgeInsets.only(bottom: 88),
       children: [
-        if (winner.isNotEmpty || nowPlaying != null)
-          _NextCard(
-            winner: winner.firstOrNull,
-            nowPlaying: nowPlaying,
-          ),
+        if (winner.isNotEmpty) _NextCard(winner: winner.first),
         if (inVoting.isEmpty && waiting.isEmpty)
           const ListTile(
             title: Text('Nema predloga u glasanju.'),
           ),
-        for (final p in inVoting)
+        for (var i = 0; i < inVoting.length; i++)
           _ProposalTile(
-            proposal: p,
-            votes: tally[p.id] ?? 0,
-            isOwn: p.proposedBy == currentUser,
+            proposal: inVoting[i],
+            votes: tally[inVoting[i].id] ?? 0,
+            isOwn: inVoting[i].proposedBy == currentUser,
+            ordinal: '${i + 1}',
           ),
         if (waiting.isNotEmpty)
           ExpansionTile(
@@ -165,6 +126,7 @@ class _ProposalList extends StatelessWidget {
                   proposal: p,
                   votes: tally[p.id] ?? 0,
                   isOwn: p.proposedBy == currentUser,
+                  ordinal: '–',
                 ),
             ],
           ),
@@ -173,45 +135,21 @@ class _ProposalList extends StatelessWidget {
   }
 }
 
-/// Kompaktna kartica vrha glasanja: pobednik (sledeca) + sta sada ide.
-/// Bez odbrojavanja — ono zivi na tabu Trenutno.
+/// Sledeca pesma (pobednik) skroz gore, sa ikonicom pobednika.
 class _NextCard extends StatelessWidget {
-  const _NextCard({this.winner, this.nowPlaying});
+  const _NextCard({required this.winner});
 
-  final Proposal? winner;
-  final Proposal? nowPlaying;
+  final Proposal winner;
 
   @override
   Widget build(BuildContext context) {
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (nowPlaying != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.play_circle_outline),
-                title: Text(nowPlaying!.song.title),
-                subtitle: Text('Sada ide · ${nowPlaying!.song.artist}'),
-                onTap: () => context.go(
-                  proposalPath(nowPlaying!.roomId, nowPlaying!.id),
-                ),
-              ),
-            if (winner != null)
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.emoji_events_outlined),
-                title: Text(winner!.song.title),
-                subtitle: Text('Sledeća · ${winner!.song.artist}'),
-                onTap: () => context.go(
-                  proposalPath(winner!.roomId, winner!.id),
-                ),
-              ),
-          ],
-        ),
+      child: ListTile(
+        leading: const Icon(Icons.emoji_events_outlined),
+        title: Text(winner.song.title),
+        subtitle: Text('Sledeća · ${winner.song.artist}'),
+        onTap: () => context.go(proposalPath(winner.roomId, winner.id)),
       ),
     );
   }
@@ -222,32 +160,50 @@ class _ProposalTile extends StatelessWidget {
     required this.proposal,
     required this.votes,
     required this.isOwn,
+    required this.ordinal,
   });
 
   final Proposal proposal;
   final int votes;
   final bool isOwn;
 
+  /// Redni broj u listi glasanja ili crtica za cekanje.
+  final String ordinal;
+
   @override
   Widget build(BuildContext context) {
     final status = proposal.status;
     return ListTile(
       onTap: () => context.go(proposalPath(proposal.roomId, proposal.id)),
-      title: Text(proposal.song.title),
-      // Wrap: na uskom ekranu cipovi prelaze u novi red umesto da se seku.
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(proposal.song.artist),
-            ProposalStatusChip(status),
-            if (isOwn) const OwnProposalBadge(),
-          ],
+      // Redni broj levo od naziva; crtica za predloge na cekanju.
+      leading: SizedBox(
+        width: 28,
+        child: Text(
+          ordinal,
+          textAlign: TextAlign.center,
+          style: tabularFigures,
         ),
       ),
+      // Oznake pored naziva kao ikonice (status + tvoj predlog), bez teksta:
+      // red ostaje jednoravan, znacenje je na detalju i u tooltip-u.
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              proposal.song.title,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          ProposalStatusIcon(status),
+          if (isOwn) ...[
+            const SizedBox(width: 4),
+            const OwnProposalIcon(),
+          ],
+        ],
+      ),
+      subtitle: Text(proposal.song.artist),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

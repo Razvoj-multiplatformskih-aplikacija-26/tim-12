@@ -143,33 +143,75 @@ void main() {
     expect(find.byType(PopupMenuButton<void>), findsNothing);
   });
 
-  testWidgets('oznaka "Tvoj predlog" samo na predlozima tekuceg korisnika', (
+  testWidgets('oznaka tekuceg korisnika: ikonica bez teksta, samo na svojim', (
     tester,
   ) async {
     await _pumpScreen(tester, _TestRepository(snapshot: demoRoom(_now)));
     await tester.pump(_delay);
-    // p5 (predlozena) ceka u sklopljenoj sekciji na dnu — prvo skroluj.
+    // p5 (predlozena) ceka u sklopljenoj sekciji na dnu — prvo skroluj,
+    // dovedi u sredinu (tap na delimicno vidljiv red vara hit-test).
+    final waitingHeader = find.textContaining('Na čekanju');
     await tester.scrollUntilVisible(
-      find.textContaining('Na čekanju'),
+      waitingHeader,
       200,
       scrollable: find.descendant(
         of: find.byType(ListView),
         matching: find.byType(Scrollable),
       ),
     );
-    await tester.tap(find.textContaining('Na čekanju'));
+    await tester.ensureVisible(waitingHeader);
     await tester.pumpAndSettle();
-    // u1 u demo podacima: p3 (u glasanju) i p5 (predlozena).
+    await tester.tap(waitingHeader);
+    await tester.pumpAndSettle();
+    // u1 u demo podacima: p3 (u glasanju) i p5 (predlozena) nose ikonicu.
     for (final title in ['Đurđevdan', 'Mesečina']) {
       final tile = find.ancestor(
         of: find.text(title),
         matching: find.byType(ListTile),
       );
       expect(
-        find.descendant(of: tile, matching: find.text('Tvoj predlog')),
+        find.descendant(of: tile, matching: find.byIcon(Icons.person)),
         findsOneWidget,
       );
     }
-    expect(find.text('Tvoj predlog'), findsNWidgets(2));
+    expect(find.byIcon(Icons.person), findsNWidgets(2));
+  });
+
+  testWidgets('redni broj po glasovima, crtica za cekanje', (tester) async {
+    await _pumpScreen(tester, _TestRepository(snapshot: demoRoom(_now)));
+    await tester.pump(_delay);
+    // Fuego (2 glasa) prvi, Mr. Brightside (1 glas) drugi.
+    for (final (title, ordinal) in [('Fuego', '1'), ('Mr. Brightside', '2')]) {
+      final tile = find.ancestor(
+        of: find.text(title),
+        matching: find.byType(ListTile),
+      );
+      expect(
+        find.descendant(of: tile, matching: find.text(ordinal)),
+        findsOneWidget,
+      );
+    }
+    // Mesečina ceka: skroluj do sekcije, dovedi u sredinu, rasklopi.
+    final waitingHeader = find.textContaining('Na čekanju');
+    await tester.scrollUntilVisible(
+      waitingHeader,
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.ensureVisible(waitingHeader);
+    await tester.pumpAndSettle();
+    await tester.tap(waitingHeader);
+    await tester.pumpAndSettle();
+    final waiting = find.ancestor(
+      of: find.text('Mesečina'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(of: waiting, matching: find.text('–')),
+      findsOneWidget,
+    );
   });
 }

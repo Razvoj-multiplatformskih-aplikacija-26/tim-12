@@ -11,7 +11,6 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
-import 'package:radioroom_ui/radioroom_ui.dart';
 
 import '../paths.dart';
 import 'proposal_labels.dart';
@@ -238,20 +237,25 @@ class _ExistingTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: () => context.go(proposalPath(proposal.roomId, proposal.id)),
-      title: Text(proposal.song.title),
-      subtitle: Padding(
-        padding: const EdgeInsets.only(top: 4),
-        child: Wrap(
-          spacing: 8,
-          runSpacing: 4,
-          crossAxisAlignment: WrapCrossAlignment.center,
-          children: [
-            Text(proposal.song.artist),
-            ProposalStatusChip(proposal.status),
-            if (isOwn) const OwnProposalBadge(),
+      // Oznake pored naziva kao ikonice (status + tvoj predlog), bez teksta.
+      title: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Flexible(
+            child: Text(
+              proposal.song.title,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const SizedBox(width: 8),
+          ProposalStatusIcon(proposal.status),
+          if (isOwn) ...[
+            const SizedBox(width: 4),
+            const OwnProposalIcon(),
           ],
-        ),
+        ],
       ),
+      subtitle: Text(proposal.song.artist),
       trailing: proposal.status is InVoting
           ? FilledButton.tonal(
               onPressed: () => confirmVote(context, proposal),

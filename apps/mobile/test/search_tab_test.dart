@@ -94,14 +94,39 @@ void main() {
 
   testWidgets('swipe levo-desno menja tabove kao i bar', (tester) async {
     await _start(tester, '/soba/r1');
-    // Default je Glasaj (sredina).
+    // Default je Glasaj (sredina): Sledeca kartica + lista sa rednim brojevima.
     expect(find.text('Sledeća · The White Stripes'), findsOneWidget);
+    final fuego = find.ancestor(
+      of: find.text('Fuego'),
+      matching: find.byType(ListTile),
+    );
+    expect(
+      find.descendant(of: fuego, matching: find.text('1')),
+      findsOneWidget,
+    );
 
     await tester.fling(find.byType(TabBarView), const Offset(-300, 0), 800);
     await tester.pumpAndSettle();
-    // Trenutno tab: pobednik kartica i lider umesto liste glasanja.
-    expect(find.text('Sledeća · pobednik runde'), findsOneWidget);
-    expect(find.textContaining('Vodi Fuego'), findsOneWidget);
+    // Trenutno tab: hero cover + album + traka + dugmad (skroluj prvo:
+    // dugmad su ispod folda i lenjo se montiraju).
+    expect(find.text('Bohemian Rhapsody'), findsOneWidget);
+    expect(find.text('Queen · A Night at the Opera (1975)'), findsOneWidget);
+    await tester.scrollUntilVisible(
+      find.text('Slušaj na Deezer'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    for (final label in [
+      'Slušaj na Spotify',
+      'Slušaj na YouTube Music',
+      'Slušaj na YouTube',
+      'Slušaj na Deezer',
+    ]) {
+      expect(find.text(label), findsOneWidget);
+    }
 
     await tester.fling(find.byType(TabBarView), const Offset(300, 0), 800);
     await tester.pumpAndSettle();

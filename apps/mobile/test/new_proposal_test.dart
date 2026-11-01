@@ -125,16 +125,20 @@ void main() {
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1');
     // Nov predlog je predlozen: ceka u sklopljenoj sekciji na dnu liste —
-    // prvo skroluj do nje (lenjo montiranje), pa rasklopi.
+    // prvo skroluj do nje (lenjo montiranje), dovedi u sredinu jer tap
+    // na delimicno vidljiv red vara hit-test, pa rasklopi.
+    final waitingHeader = find.textContaining('Na čekanju');
     await tester.scrollUntilVisible(
-      find.textContaining('Na čekanju'),
+      waitingHeader,
       200,
       scrollable: find.descendant(
         of: find.byType(ListView),
         matching: find.byType(Scrollable),
       ),
     );
-    await tester.tap(find.textContaining('Na čekanju'));
+    await tester.ensureVisible(waitingHeader);
+    await tester.pumpAndSettle();
+    await tester.tap(waitingHeader);
     await tester.pumpAndSettle();
     // Red dovedi u sredinu da tap sigurno pogodi (delimicno vidljiv red
     // vara hit-test kroz donji bar).
@@ -152,8 +156,9 @@ void main() {
     );
     await tester.ensureVisible(tile);
     await tester.pumpAndSettle();
+    // Oznaka je ikonica bez teksta (znacenje u tooltip-u i na detalju).
     expect(
-      find.descendant(of: tile, matching: find.text('Tvoj predlog')),
+      find.descendant(of: tile, matching: find.byIcon(Icons.person)),
       findsOneWidget,
     );
 

@@ -7,6 +7,7 @@
 // `ruleError` zive na nivou sobe kao pre (obrazac iz stash MVP-a).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
@@ -69,24 +70,62 @@ class _RoomShellState extends State<RoomShell>
   Widget build(BuildContext context) {
     return ListenableBuilder(
       listenable: _tabs,
-      builder: (context, _) => Scaffold(
-        body: TabBarView(
-          controller: _tabs,
-          children: [
-            SearchTab(
-              focusNode: _searchFocus,
-              onAccepted: () => _tabs.animateTo(RoomTab.vote.index),
-              currentUser: widget.currentUser,
+      builder: (context, _) => PopScope(
+        // Sistemski "nazad" sa tabova vodi na home, ne iz aplikacije.
+        // Pod-rute (`novi`, `predlog/:id`) su posebni ekrani iznad skoljke:
+        // skoljka tamo nije u stablu pa se njihov "nazad" ne dira.
+        canPop: false,
+        onPopInvokedWithResult: (didPop, _) {
+          if (!didPop) context.go('/sobe');
+        },
+        child: Scaffold(
+          appBar: AppBar(
+            leading: IconButton(
+              tooltip: 'Nazad na sobe',
+              icon: const Icon(Icons.arrow_back),
+              onPressed: () => context.go('/sobe'),
             ),
-            ProposalListScreen(
-              key: ValueKey(widget.roomId),
-              roomId: widget.roomId,
-              currentUser: widget.currentUser,
-              onSimulateError: widget.onSimulateError,
+            title: BlocSelector<ProposalListBloc, ProposalListState, String>(
+              selector: (state) => switch (state) {
+                ProposalsLoaded(:final snapshot) ||
+                ProposalsEmpty(:final snapshot) => snapshot.room.name,
+                _ => 'RadioRoom',
+              },
+              builder: (_, title) => Text(title),
             ),
-            const NowTab(),
-          ],
-        ),
+            actions: [
+              // Okidac greske za probu porta; bez njega menija nema, pa
+              // zamena implementacije porta ne menja ovaj ekran.
+              if (widget.onSimulateError != null)
+                PopupMenuButton<void>(
+                  itemBuilder: (_) => [
+                    PopupMenuItem(
+                      onTap: widget.onSimulateError,
+                      child: const ListTile(
+                        leading: Icon(Icons.error_outline),
+                        title: Text('Simuliraj grešku'),
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+          body: TabBarView(
+            controller: _tabs,
+            children: [
+              SearchTab(
+                focusNode: _searchFocus,
+                onAccepted: () => _tabs.animateTo(RoomTab.vote.index),
+                currentUser: widget.currentUser,
+              ),
+              ProposalListScreen(
+                key: ValueKey(widget.roomId),
+                roomId: widget.roomId,
+                currentUser: widget.currentUser,
+              ),
+              const NowTab(),
+            ],
+          ),
         // FAB samo na Glasaj tabu i samo kad su podaci sobe tu.
         floatingActionButton: _tabs.index == RoomTab.vote.index
             ? BlocSelector<ProposalListBloc, ProposalListState, bool>(
@@ -118,6 +157,7 @@ class _RoomShellState extends State<RoomShell>
               label: 'Trenutno',
             ),
           ],
+        ),
         ),
       ),
     );
