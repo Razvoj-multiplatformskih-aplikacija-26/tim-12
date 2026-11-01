@@ -56,4 +56,11 @@ void main() {
       'Ova soba je već zatvorena.',
     );
   });
+
+  test('prazan naziv sobe', () {
+    expect(
+      ruleMessage(const RoomNameEmpty()),
+      'Naziv sobe ne sme biti prazan.',
+    );
+  });
 }

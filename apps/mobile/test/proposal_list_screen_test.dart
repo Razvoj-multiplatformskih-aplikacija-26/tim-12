@@ -58,6 +58,10 @@ final class _TestRepository implements ProposalRepository {
   @override
   Future<Room> closeRoom({required RoomId roomId}) =>
       throw UnimplementedError();
+
+  @override
+  Future<Room> createRoom({required String name, required UserId hostId}) =>
+      throw UnimplementedError();
 }
 
 RoomSnapshot _empty() {

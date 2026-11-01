@@ -41,4 +41,8 @@ abstract interface class ProposalRepository {
 
   /// Zatvara sobu (prelaz u `RoomClosed`) i vraca je. Prelaz proverava Bloc.
   Future<Room> closeRoom({required RoomId roomId});
+
+  /// Pravi novu sobu (otvorenu) i vraca je. Naziv proverava Bloc domenom
+  /// pre poziva — port samo upisuje. ID dodeljuje implementacija.
+  Future<Room> createRoom({required String name, required UserId hostId});
 }

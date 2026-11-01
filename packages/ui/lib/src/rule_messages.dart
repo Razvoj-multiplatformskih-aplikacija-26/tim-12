@@ -20,6 +20,7 @@ String ruleMessage(ProposalRuleError error) => switch (error) {
   ProposalNotRemovable() =>
     'Ovaj predlog je već završen i ne može da se ukloni.',
   RoomNotClosable() => 'Ova soba je već zatvorena.',
+  RoomNameEmpty() => 'Naziv sobe ne sme biti prazan.',
 };
 
 String _clockTime(DateTime at) =>

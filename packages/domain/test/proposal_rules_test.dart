@@ -216,8 +216,21 @@ void main() {
     });
   });
 
-  group('checkRemovable', () {
-    test('nezavrsen predlog sme da se ukloni', () {
+  group('checkRoomName', () {
+    test('naziv sa slovima vazi', () {
+      expect(checkRoomName(name: 'Petak').isValid, isTrue);
+    });
+
+    test('prazan naziv i sami razmaci ne vaze', () {
+      for (final name in ['', '   ']) {
+        final outcome = checkRoomName(name: name);
+        expect(outcome, isA<RuleInvalid>());
+        expect((outcome as RuleInvalid).error, isA<RoomNameEmpty>());
+      }
+    });
+  });
+
+  group('checkRemovable', () {    test('nezavrsen predlog sme da se ukloni', () {
       for (final status in [
         const Proposed(),
         const InVoting(),
