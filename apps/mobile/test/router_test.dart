@@ -1,4 +1,5 @@
 // Navigacija: adresa po ekranu, preusmerenje i nepoznate adrese.
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radioroom_mobile/data/demo_room.dart';
@@ -48,5 +49,29 @@ void main() {
     await tester.pump(_delay);
     expect(_location(router), '/soba/r1');
     expect(find.text('Fuego'), findsOneWidget);
+  });
+
+  testWidgets('prekrsaj pravila: SnackBar sa porukom za celu sobu', (
+    tester,
+  ) async {
+    await _start(tester, '/soba/r1');
+
+    Future<void> vote() async {
+      await tester.tap(find.widgetWithText(TextButton, 'Glasaj').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, 'Glasaj'));
+      await tester.pump();
+      await tester.pump(_delay);
+    }
+
+    await vote();
+    expect(find.byType(SnackBar), findsNothing);
+
+    await vote();
+    await tester.pump();
+    expect(
+      find.text('Tvoj glas u ovoj rundi je već zabeležen.'),
+      findsOneWidget,
+    );
   });
 }

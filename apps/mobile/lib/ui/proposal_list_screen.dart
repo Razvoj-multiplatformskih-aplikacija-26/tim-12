@@ -2,14 +2,16 @@
 // podaci), predlog pesme i glas.
 //
 // Ekran samo salje dogadjaje i crta stanje Bloc-a: ne zna za implementaciju
-// porta niti racuna pravila. Prekrsaj pravila (`ruleError`) je SnackBar,
-// tehnicka greska je ekran greske sa "Pokusaj ponovo" (pravilo != greska).
-// Privremen do celine "mobilna aplikacija" (go_router, tema, ikonica).
+// porta niti racuna pravila. Tehnicka greska je ekran greske sa "Pokusaj
+// ponovo"; prekrsaj pravila je SnackBar koji prikazuje ruter za celu sobu
+// (pravilo != greska).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
+
+import 'vote_confirmation.dart';
 
 class ProposalListScreen extends StatelessWidget {
   const ProposalListScreen({super.key, this.onSimulateError});
@@ -21,63 +23,53 @@ class ProposalListScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocListener<ProposalListBloc, ProposalListState>(
-      listenWhen: (_, state) =>
-          state is ProposalsLoaded && state.ruleError != null,
-      listener: (context, state) {
-        final error = (state as ProposalsLoaded).ruleError!;
-        ScaffoldMessenger.of(context)
-          ..hideCurrentSnackBar()
-          ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
-      },
-      child: Scaffold(
-        appBar: AppBar(
-          title: BlocSelector<ProposalListBloc, ProposalListState, String>(
-            selector: (state) => switch (state) {
-              ProposalsLoaded(:final snapshot) ||
-              ProposalsEmpty(:final snapshot) => snapshot.room.name,
-              _ => 'RadioRoom',
-            },
-            builder: (_, title) => Text(title),
-          ),
-          actions: [
-            if (onSimulateError != null)
-              PopupMenuButton<void>(
-                itemBuilder: (_) => [
-                  PopupMenuItem(
-                    onTap: onSimulateError,
-                    child: const Text('Simuliraj grešku'),
-                  ),
-                ],
-              ),
-          ],
-        ),
-        body: BlocBuilder<ProposalListBloc, ProposalListState>(
-          builder: (context, state) => switch (state) {
-            ProposalsInitial() || ProposalsLoading() => const Center(
-              child: CircularProgressIndicator(),
-            ),
-            ProposalsError() => const _ErrorView(),
-            ProposalsEmpty() => const _EmptyView(),
-            ProposalsLoaded(:final snapshot, :final tally) => _ProposalList(
-              snapshot: snapshot,
-              tally: tally,
-            ),
+    return Scaffold(
+      appBar: AppBar(
+        title: BlocSelector<ProposalListBloc, ProposalListState, String>(
+          selector: (state) => switch (state) {
+            ProposalsLoaded(:final snapshot) ||
+            ProposalsEmpty(:final snapshot) => snapshot.room.name,
+            _ => 'RadioRoom',
           },
+          builder: (_, title) => Text(title),
         ),
-        floatingActionButton:
-            BlocSelector<ProposalListBloc, ProposalListState, bool>(
-              selector: (state) =>
-                  state is ProposalsLoaded || state is ProposalsEmpty,
-              builder: (context, canPropose) => canPropose
-                  ? FloatingActionButton.extended(
-                      onPressed: () => _propose(context),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Predloži pesmu'),
-                    )
-                  : const SizedBox.shrink(),
+        actions: [
+          if (onSimulateError != null)
+            PopupMenuButton<void>(
+              itemBuilder: (_) => [
+                PopupMenuItem(
+                  onTap: onSimulateError,
+                  child: const Text('Simuliraj grešku'),
+                ),
+              ],
             ),
+        ],
       ),
+      body: BlocBuilder<ProposalListBloc, ProposalListState>(
+        builder: (context, state) => switch (state) {
+          ProposalsInitial() || ProposalsLoading() => const Center(
+            child: CircularProgressIndicator(),
+          ),
+          ProposalsError() => const _ErrorView(),
+          ProposalsEmpty() => const _EmptyView(),
+          ProposalsLoaded(:final snapshot, :final tally) => _ProposalList(
+            snapshot: snapshot,
+            tally: tally,
+          ),
+        },
+      ),
+      floatingActionButton:
+          BlocSelector<ProposalListBloc, ProposalListState, bool>(
+            selector: (state) =>
+                state is ProposalsLoaded || state is ProposalsEmpty,
+            builder: (context, canPropose) => canPropose
+                ? FloatingActionButton.extended(
+                    onPressed: () => _propose(context),
+                    icon: const Icon(Icons.add),
+                    label: const Text('Predloži pesmu'),
+                  )
+                : const SizedBox.shrink(),
+          ),
     );
   }
 
@@ -206,36 +198,13 @@ class _ProposalTile extends StatelessWidget {
           if (status is InVoting) ...[
             const SizedBox(width: 8),
             TextButton(
-              onPressed: () => _vote(context),
+              onPressed: () => confirmVote(context, proposal),
               child: const Text('Glasaj'),
             ),
           ],
         ],
       ),
     );
-  }
-
-  /// Glas je nepovratan, pa trazi potvrdu u dijalogu.
-  Future<void> _vote(BuildContext context) async {
-    final bloc = context.read<ProposalListBloc>();
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text('Glasati za „${proposal.song.title}“?'),
-        content: const Text('Glas u rundi se ne može promeniti.'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Otkaži'),
-          ),
-          FilledButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Glasaj'),
-          ),
-        ],
-      ),
-    );
-    if (confirmed ?? false) bloc.add(VoteCast(proposal.id));
   }
 }
 

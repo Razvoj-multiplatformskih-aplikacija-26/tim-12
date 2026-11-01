@@ -7,12 +7,15 @@
 //
 // Soba je u adresi, pa Bloc pravi ShellRoute za sobu iz adrese: svi ekrani
 // jedne sobe dele isti Bloc (isti podaci, glas sa detalja vidi i lista).
+// Tu je i prikaz prekrsaja pravila (SnackBar), pa se poruka vidi na kom god
+// ekranu sobe je akcija pokrenuta.
 // Ruter zna samo za PORT — koja implementacija stize, odlucuje `main.dart`.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'data/demo_room.dart';
 import 'ui/proposal_list_screen.dart';
@@ -39,7 +42,7 @@ GoRouter createRouter({
             roomId: roomId,
             currentUser: currentUser,
           )..add(const ProposalsRequested()),
-          child: child,
+          child: _RuleErrorListener(child: child),
         );
       },
       routes: [
@@ -53,6 +56,28 @@ GoRouter createRouter({
   ],
   errorBuilder: (context, state) => const _NotFoundScreen(),
 );
+
+/// Prekrsaj pravila (`ruleError`) postaje SnackBar sa porukom na srpskom.
+/// Tehnicka greska NIJE ovde — nju crta svaki ekran kao ekran greske.
+class _RuleErrorListener extends StatelessWidget {
+  const _RuleErrorListener({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) =>
+      BlocListener<ProposalListBloc, ProposalListState>(
+        listenWhen: (_, state) =>
+            state is ProposalsLoaded && state.ruleError != null,
+        listener: (context, state) {
+          final error = (state as ProposalsLoaded).ruleError!;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+        },
+        child: child,
+      );
+}
 
 /// Nepoznata adresa.
 class _NotFoundScreen extends StatelessWidget {
