@@ -2,7 +2,7 @@
 //
 //   /                          → preusmerava na demo sobu
 //   /soba/:roomId              → lista predloga sobe (glavni tok)
-//   /soba/:roomId/predlog/:id  → detalj predloga          (M2)
+//   /soba/:roomId/predlog/:id  → detalj predloga
 //   /soba/:roomId/novi         → forma novog predloga     (M3)
 //
 // Soba je u adresi, pa Bloc pravi ShellRoute za sobu iz adrese: svi ekrani
@@ -18,10 +18,9 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'data/demo_room.dart';
+import 'paths.dart';
+import 'ui/proposal_detail_screen.dart';
 import 'ui/proposal_list_screen.dart';
-
-/// Adresa liste predloga sobe.
-String roomPath(RoomId roomId) => '/soba/${roomId.value}';
 
 GoRouter createRouter({
   required ProposalRepository repository,
@@ -48,8 +47,20 @@ GoRouter createRouter({
       routes: [
         GoRoute(
           path: '/soba/:roomId',
-          builder: (_, _) =>
-              ProposalListScreen(onSimulateError: onSimulateError),
+          builder: (_, _) => ProposalListScreen(
+            currentUser: currentUser,
+            onSimulateError: onSimulateError,
+          ),
+          routes: [
+            // Pod-ruta: lista ostaje ispod detalja, pa "nazad" radi sam.
+            GoRoute(
+              path: 'predlog/:id',
+              builder: (_, state) => ProposalDetailScreen(
+                proposalId: ProposalId(state.pathParameters['id']!),
+                currentUser: currentUser,
+              ),
+            ),
+          ],
         ),
       ],
     ),

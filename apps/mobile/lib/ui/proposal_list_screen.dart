@@ -7,14 +7,26 @@
 // (pravilo != greska).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
+import '../paths.dart';
+import 'proposal_labels.dart';
+import 'room_error_view.dart';
 import 'vote_confirmation.dart';
 
 class ProposalListScreen extends StatelessWidget {
-  const ProposalListScreen({super.key, this.onSimulateError});
+  const ProposalListScreen({
+    super.key,
+    required this.currentUser,
+    this.onSimulateError,
+  });
+
+  /// Tekuci korisnik (u KT1 fiksan; u KT2 ga daje prijava) — za oznaku
+  /// "Tvoj predlog".
+  final UserId currentUser;
 
   /// Okidac greske sledeceg zahteva. Daje ga mesto sastavljanja aplikacije
   /// (`main.dart`); bez njega stavka menija se ne prikazuje, pa zamena
@@ -50,11 +62,12 @@ class ProposalListScreen extends StatelessWidget {
           ProposalsInitial() || ProposalsLoading() => const Center(
             child: CircularProgressIndicator(),
           ),
-          ProposalsError() => const _ErrorView(),
+          ProposalsError() => const RoomErrorView(),
           ProposalsEmpty() => const _EmptyView(),
           ProposalsLoaded(:final snapshot, :final tally) => _ProposalList(
             snapshot: snapshot,
             tally: tally,
+            currentUser: currentUser,
           ),
         },
       ),
@@ -83,40 +96,6 @@ class ProposalListScreen extends StatelessWidget {
   }
 }
 
-class _ErrorView extends StatelessWidget {
-  const _ErrorView();
-
-  @override
-  Widget build(BuildContext context) => Center(
-    child: Padding(
-      padding: const EdgeInsets.all(24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(
-            Icons.cloud_off,
-            size: 48,
-            color: Theme.of(context).colorScheme.error,
-          ),
-          const SizedBox(height: 16),
-          const Text(
-            'Nešto nije u redu. Proveri vezu i pokušaj ponovo.',
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: () => context.read<ProposalListBloc>().add(
-              const ProposalsRequested(),
-            ),
-            icon: const Icon(Icons.refresh),
-            label: const Text('Pokušaj ponovo'),
-          ),
-        ],
-      ),
-    ),
-  );
-}
-
 class _EmptyView extends StatelessWidget {
   const _EmptyView();
 
@@ -137,10 +116,15 @@ class _EmptyView extends StatelessWidget {
 }
 
 class _ProposalList extends StatelessWidget {
-  const _ProposalList({required this.snapshot, required this.tally});
+  const _ProposalList({
+    required this.snapshot,
+    required this.tally,
+    required this.currentUser,
+  });
 
   final RoomSnapshot snapshot;
   final Map<ProposalId, int> tally;
+  final UserId currentUser;
 
   @override
   Widget build(BuildContext context) {
@@ -154,36 +138,50 @@ class _ProposalList extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
             child: Text(
-              'Runda traje do ${_clockTime(snapshot.round.endsAt)}',
+              'Runda traje do ${clockTime(snapshot.round.endsAt)}',
               style: Theme.of(context).textTheme.titleMedium,
             ),
           );
         }
         final p = proposals[index - 1];
-        return _ProposalTile(proposal: p, votes: tally[p.id] ?? 0);
+        return _ProposalTile(
+          proposal: p,
+          votes: tally[p.id] ?? 0,
+          isOwn: p.proposedBy == currentUser,
+        );
       },
     );
   }
 }
 
 class _ProposalTile extends StatelessWidget {
-  const _ProposalTile({required this.proposal, required this.votes});
+  const _ProposalTile({
+    required this.proposal,
+    required this.votes,
+    required this.isOwn,
+  });
 
   final Proposal proposal;
   final int votes;
+  final bool isOwn;
 
   @override
   Widget build(BuildContext context) {
     final status = proposal.status;
     return ListTile(
+      onTap: () => context.go(proposalPath(proposal.roomId, proposal.id)),
       title: Text(proposal.song.title),
+      // Wrap: na uskom ekranu cipovi prelaze u novi red umesto da se seku.
       subtitle: Padding(
         padding: const EdgeInsets.only(top: 4),
-        child: Row(
+        child: Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Flexible(child: Text(proposal.song.artist)),
-            const SizedBox(width: 8),
+            Text(proposal.song.artist),
             ProposalStatusChip(status),
+            if (isOwn) const OwnProposalBadge(),
           ],
         ),
       ),
@@ -262,7 +260,3 @@ class _ProposeDialogState extends State<_ProposeDialog> {
     ],
   );
 }
-
-String _clockTime(DateTime at) =>
-    '${at.hour.toString().padLeft(2, '0')}:'
-    '${at.minute.toString().padLeft(2, '0')}';
