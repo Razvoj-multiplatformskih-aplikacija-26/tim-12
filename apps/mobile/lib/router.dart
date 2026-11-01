@@ -3,7 +3,7 @@
 //   /                          → preusmerava na demo sobu
 //   /soba/:roomId              → lista predloga sobe (glavni tok)
 //   /soba/:roomId/predlog/:id  → detalj predloga
-//   /soba/:roomId/novi         → forma novog predloga     (M3)
+//   /soba/:roomId/novi         → forma novog predloga
 //
 // Soba je u adresi, pa Bloc pravi ShellRoute za sobu iz adrese: svi ekrani
 // jedne sobe dele isti Bloc (isti podaci, glas sa detalja vidi i lista).
@@ -19,6 +19,7 @@ import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'data/demo_room.dart';
 import 'paths.dart';
+import 'ui/new_proposal_screen.dart';
 import 'ui/proposal_detail_screen.dart';
 import 'ui/proposal_list_screen.dart';
 
@@ -51,8 +52,12 @@ GoRouter createRouter({
             currentUser: currentUser,
             onSimulateError: onSimulateError,
           ),
+          // Pod-rute: lista ostaje ispod forme i detalja, pa "nazad" radi sam.
           routes: [
-            // Pod-ruta: lista ostaje ispod detalja, pa "nazad" radi sam.
+            GoRoute(
+              path: 'novi',
+              builder: (_, _) => NewProposalScreen(currentUser: currentUser),
+            ),
             GoRoute(
               path: 'predlog/:id',
               builder: (_, state) => ProposalDetailScreen(

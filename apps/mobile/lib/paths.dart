@@ -8,3 +8,6 @@ String roomPath(RoomId roomId) => '/soba/${roomId.value}';
 /// Adresa detalja predloga.
 String proposalPath(RoomId roomId, ProposalId proposalId) =>
     '${roomPath(roomId)}/predlog/${proposalId.value}';
+
+/// Adresa forme novog predloga.
+String newProposalPath(RoomId roomId) => '${roomPath(roomId)}/novi';

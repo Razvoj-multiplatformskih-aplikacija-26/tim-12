@@ -71,28 +71,23 @@ class ProposalListScreen extends StatelessWidget {
           ),
         },
       ),
+      // Dugme samo kad su podaci sobe tu; forma ima svoju adresu.
       floatingActionButton:
-          BlocSelector<ProposalListBloc, ProposalListState, bool>(
-            selector: (state) =>
-                state is ProposalsLoaded || state is ProposalsEmpty,
-            builder: (context, canPropose) => canPropose
+          BlocSelector<ProposalListBloc, ProposalListState, RoomId?>(
+            selector: (state) => switch (state) {
+              ProposalsLoaded(:final snapshot) ||
+              ProposalsEmpty(:final snapshot) => snapshot.room.id,
+              _ => null,
+            },
+            builder: (context, roomId) => roomId != null
                 ? FloatingActionButton.extended(
-                    onPressed: () => _propose(context),
+                    onPressed: () => context.go(newProposalPath(roomId)),
                     icon: const Icon(Icons.add),
                     label: const Text('Predloži pesmu'),
                   )
                 : const SizedBox.shrink(),
           ),
     );
-  }
-
-  Future<void> _propose(BuildContext context) async {
-    final bloc = context.read<ProposalListBloc>();
-    final song = await showDialog<Song>(
-      context: context,
-      builder: (_) => const _ProposeDialog(),
-    );
-    if (song != null) bloc.add(ProposalAdded(song));
   }
 }
 
@@ -204,59 +199,4 @@ class _ProposalTile extends StatelessWidget {
       ),
     );
   }
-}
-
-/// Minimalni unos predloga (puna forma stize u celini "mobilna aplikacija").
-class _ProposeDialog extends StatefulWidget {
-  const _ProposeDialog();
-
-  @override
-  State<_ProposeDialog> createState() => _ProposeDialogState();
-}
-
-class _ProposeDialogState extends State<_ProposeDialog> {
-  final _title = TextEditingController();
-  final _artist = TextEditingController();
-
-  @override
-  void dispose() {
-    _title.dispose();
-    _artist.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    final title = _title.text.trim();
-    final artist = _artist.text.trim();
-    if (title.isEmpty || artist.isEmpty) return;
-    Navigator.pop(context, Song(title: title, artist: artist));
-  }
-
-  @override
-  Widget build(BuildContext context) => AlertDialog(
-    title: const Text('Predloži pesmu'),
-    content: Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        TextField(
-          controller: _title,
-          autofocus: true,
-          decoration: const InputDecoration(labelText: 'Naslov'),
-          textInputAction: TextInputAction.next,
-        ),
-        TextField(
-          controller: _artist,
-          decoration: const InputDecoration(labelText: 'Izvođač'),
-          onSubmitted: (_) => _submit(),
-        ),
-      ],
-    ),
-    actions: [
-      TextButton(
-        onPressed: () => Navigator.pop(context),
-        child: const Text('Otkaži'),
-      ),
-      FilledButton(onPressed: _submit, child: const Text('Predloži')),
-    ],
-  );
 }
