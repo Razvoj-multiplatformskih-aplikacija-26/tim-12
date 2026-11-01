@@ -25,10 +25,11 @@ String _location(GoRouter router) =>
     router.routerDelegate.currentConfiguration.uri.toString();
 
 void main() {
-  testWidgets('koren preusmerava na demo sobu', (tester) async {
+  testWidgets('koren preusmerava na sobe', (tester) async {
     final router = await _start(tester, '/');
-    expect(_location(router), '/soba/r1');
-    expect(find.text('Petak u Studentskom'), findsOneWidget);
+    expect(_location(router), '/sobe');
+    expect(find.text('Napravi sobu'), findsWidgets);
+    expect(find.text('Pridruži se'), findsOneWidget);
   });
 
   testWidgets('adresa sobe otvara listu te sobe', (tester) async {
@@ -41,15 +42,14 @@ void main() {
     expect(find.text('Pokušaj ponovo'), findsOneWidget);
   });
 
-  testWidgets('nepoznata adresa: poruka i povratak na sobu', (tester) async {
+  testWidgets('nepoznata adresa: poruka i povratak na sobe', (tester) async {
     final router = await _start(tester, '/nesto');
     expect(find.text('Ova stranica ne postoji.'), findsOneWidget);
 
-    await tester.tap(find.text('Nazad na sobu'));
+    await tester.tap(find.text('Nazad na sobe'));
     await tester.pump();
     await tester.pump(_delay);
-    expect(_location(router), '/soba/r1');
-    expect(find.text('Fuego'), findsOneWidget);
+    expect(_location(router), '/sobe');
   });
 
   testWidgets('prekrsaj pravila: SnackBar sa porukom za celu sobu', (
