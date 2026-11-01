@@ -7,12 +7,11 @@
 // `ruleError` zive na nivou sobe kao pre (obrazac iz stash MVP-a).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
-import '../paths.dart';
 import 'proposal_list_screen.dart';
+import 'search_tab.dart';
 
 /// Redosled tabova; sredina je podrazumevana (glasanje je primarna radnja).
 enum RoomTab { search, vote, now }
@@ -37,6 +36,10 @@ class _RoomShellState extends State<RoomShell>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
 
+  /// Fokus polja pretrage: FAB ga trazi kad prebaci na Pretraga tab.
+  /// Polje se montira sa tabom, pa fokus stize nakon kraja animacije.
+  final _searchFocus = FocusNode();
+
   @override
   void initState() {
     super.initState();
@@ -50,7 +53,15 @@ class _RoomShellState extends State<RoomShell>
   @override
   void dispose() {
     _tabs.dispose();
+    _searchFocus.dispose();
     super.dispose();
+  }
+
+  void _goSearch() {
+    _tabs.animateTo(RoomTab.search.index);
+    Future.delayed(const Duration(milliseconds: 350), () {
+      if (mounted) _searchFocus.requestFocus();
+    });
   }
 
   @override
@@ -61,7 +72,11 @@ class _RoomShellState extends State<RoomShell>
         body: TabBarView(
           controller: _tabs,
           children: [
-            const _SearchPlaceholder(),
+            SearchTab(
+              focusNode: _searchFocus,
+              onAccepted: () => _tabs.animateTo(RoomTab.vote.index),
+              currentUser: widget.currentUser,
+            ),
             ProposalListScreen(
               key: ValueKey(widget.roomId),
               roomId: widget.roomId,
@@ -71,17 +86,14 @@ class _RoomShellState extends State<RoomShell>
             const _NowPlaceholder(),
           ],
         ),
-        // FAB samo na Glasaj tabu i samo kad su podaci sobe tu
-        // (kao pre: u gresci i ucitavanju ga nema).
+        // FAB samo na Glasaj tabu i samo kad su podaci sobe tu.
         floatingActionButton: _tabs.index == RoomTab.vote.index
             ? BlocSelector<ProposalListBloc, ProposalListState, bool>(
                 selector: (state) =>
                     state is ProposalsLoaded || state is ProposalsEmpty,
                 builder: (context, hasData) => hasData
-                    // Privremeno do koraka 4: vodi na formu; tada → Pretraga.
                     ? FloatingActionButton.extended(
-                        onPressed: () =>
-                            context.go(newProposalPath(widget.roomId)),
+                        onPressed: _goSearch,
                         icon: const Icon(Icons.add),
                         label: const Text('Predloži pesmu'),
                       )
@@ -109,15 +121,6 @@ class _RoomShellState extends State<RoomShell>
       ),
     );
   }
-}
-
-/// Privremeno do koraka 4 (pravi sadrzaj pretrage).
-class _SearchPlaceholder extends StatelessWidget {
-  const _SearchPlaceholder();
-
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Pretraga — uskoro'));
 }
 
 /// Privremeno do koraka 5 (sadrzaj iz stash MVP-a).

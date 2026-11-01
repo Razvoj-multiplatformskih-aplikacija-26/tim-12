@@ -158,35 +158,31 @@ void main() {
     });
   });
 
-  testWidgets('home: prelaz u praznu sobu kroz Pridruzi se, pa nazad', (
+  testWidgets('home: prelaz u praznu sobu kroz Pridruzi se, predlog iz pretrage', (
     tester,
   ) async {
-    final router = await _start(tester, '/sobe');
+    await _start(tester, '/sobe');
     await tester.tap(find.text('Pridruži se'));
     await tester.pumpAndSettle();
-    // Tekuca soba nije u meniju — home je sada jedini prelaz.
     await tester.tap(find.text('Prazna soba'));
     await tester.pumpAndSettle();
 
-    expect(_location(router), '/soba/r2');
     expect(find.text('Još nema predloga — budi prvi!'), findsOneWidget);
 
-    // Prvi predlog: prazan prikaz prelazi u podatke.
+    // FAB vodi na Pretragu (ne na formu); predlog iz stub kataloga.
     await tester.tap(find.text('Predloži pesmu'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Naslov'), 'Fuego');
     await tester.enterText(
-      find.widgetWithText(TextField, 'Izvođač'),
-      'Eleni Foureira',
+      find.widgetWithText(TextField, 'Pretraži pesme'),
+      'pressure',
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Predloži'));
     await tester.pumpAndSettle();
-    expect(_location(router), '/soba/r2');
+    // Prihvatanje vodi nazad na Glasaj; novi ceka u sklopljenoj sekciji.
     expect(find.text('Još nema predloga — budi prvi!'), findsNothing);
-    // Novi predlog je predlozen: ceka u sklopljenoj sekciji.
     await tester.tap(find.textContaining('Na čekanju'));
     await tester.pumpAndSettle();
-    expect(find.text('Fuego'), findsOneWidget);
+    expect(find.text('Under Pressure'), findsOneWidget);
   });
 }

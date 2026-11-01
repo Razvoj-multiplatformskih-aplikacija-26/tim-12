@@ -48,9 +48,16 @@ Future<void> _type(WidgetTester tester, String title, String artist) async {
 final _recentlyPlayed = find.textContaining('je puštena u');
 
 void main() {
-  testWidgets('dugme na listi otvara formu na njenoj adresi', (tester) async {
+  testWidgets('dugme na listi vodi na Pretragu, rucni unos na formu', (
+    tester,
+  ) async {
     final router = await _start(tester, '/soba/r1');
     await tester.tap(find.text('Predloži pesmu'));
+    await tester.pumpAndSettle();
+    expect(_location(router), '/soba/r1');
+    expect(find.widgetWithText(TextField, 'Pretraži pesme'), findsOneWidget);
+
+    await tester.tap(find.text('ili unesi pesmu ručno'));
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1/novi');
     expect(_field('Naslov'), findsOneWidget);
@@ -158,17 +165,18 @@ void main() {
   testWidgets('treci aktivan predlog: forma posle toga prikazuje limit', (
     tester,
   ) async {
-    await _start(tester, '/soba/r1/novi');
+    final router = await _start(tester, '/soba/r1/novi');
     expect(find.textContaining('Dostignut je limit'), findsNothing);
 
     await _type(tester, 'Under Pressure', 'Queen');
     await tester.tap(_submit);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Predloži pesmu'));
+    // Kvota popunjena: povratak na formu pokazuje limit.
+    router.go('/soba/r1/novi');
     await tester.pumpAndSettle();
-    expect(find.textContaining('Dostignut je limit'), findsOneWidget);
     await _type(tester, 'Hey Jude', 'The Beatles');
+    expect(find.textContaining('Dostignut je limit'), findsOneWidget);
     expect(_canSubmit(tester), isFalse);
   });
 
