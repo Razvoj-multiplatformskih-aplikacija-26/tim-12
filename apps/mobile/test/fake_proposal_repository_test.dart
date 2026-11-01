@@ -128,6 +128,31 @@ void main() {
       );
     });
 
+    test(
+      'prazna soba: runda bez predloga, prvi predlog ostaje u njoj',
+      () async {
+        final repository = _repository();
+        final empty = await repository.loadRoom(emptyRoomId);
+        expect(empty.proposals, isEmpty);
+        expect(empty.round.endsAt.isAfter(_now), isTrue);
+
+        await repository.propose(
+          roomId: emptyRoomId,
+          song: const Song(title: 'Nova', artist: 'Neko'),
+          proposedBy: demoUser,
+        );
+        expect(
+          (await repository.loadRoom(emptyRoomId)).proposals,
+          hasLength(1),
+        );
+        // Druga soba se ne menja.
+        expect(
+          (await repository.loadRoom(demoRoomId)).proposals,
+          hasLength(12),
+        );
+      },
+    );
+
     test('nepoznata soba baca izuzetak', () async {
       await expectLater(
         _repository().loadRoom(const RoomId('x')),

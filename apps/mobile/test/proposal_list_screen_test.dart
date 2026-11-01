@@ -67,7 +67,10 @@ Future<void> _pumpScreen(WidgetTester tester, _TestRepository repo) =>
             currentUser: demoUser,
             clock: () => _now,
           )..add(const ProposalsRequested()),
-          child: const ProposalListScreen(currentUser: demoUser),
+          child: const ProposalListScreen(
+            roomId: demoRoomId,
+            currentUser: demoUser,
+          ),
         ),
       ),
     );

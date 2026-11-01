@@ -1,6 +1,7 @@
-// Demo podaci sobe za lazni repozitorijum (KT1: podaci u memoriji).
+// Demo podaci za lazni repozitorijum (KT1: podaci u memoriji): soba sa
+// predlozima i prazna soba (za prazan prikaz uzivo).
 //
-// 12 predloga, zastupljeno svih 6 stanja. Vremena su relativna u odnosu na
+// Soba sa predlozima: 12 predloga, zastupljeno svih 6 stanja. Vremena su relativna u odnosu na
 // [now], pa je runda uvek otvorena kad se aplikacija pokrene, a "pustena
 // pre 20 min" uvek u poslednjih sat. Podaci su slozeni tako da se svako
 // pravilo moze pokazati uzivo: tekuci korisnik `u1` ima 2 aktivna predloga
@@ -12,8 +13,30 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 /// Tekuci korisnik demo sobe (u KT1 nema prijave).
 const demoUser = UserId('u1');
 
-/// Jedina demo soba.
+/// Demo soba sa predlozima.
 const demoRoomId = RoomId('r1');
+
+/// Prazna demo soba — za prazan prikaz ekrana glavnog toka uzivo.
+const emptyRoomId = RoomId('r2');
+
+/// Demo sobe za brzi prelaz u meniju liste (naziv po sobi).
+const demoRooms = {demoRoomId: _demoRoomName, emptyRoomId: _emptyRoomName};
+
+const _demoRoomName = 'Petak u Studentskom';
+const _emptyRoomName = 'Prazna soba';
+
+/// Prazna soba: ima otvorenu rundu, ali jos nijedan predlog ni glas.
+RoomSnapshot emptyRoom(DateTime now) => RoomSnapshot(
+  room: const Room(id: emptyRoomId, name: _emptyRoomName, hostId: UserId('h2')),
+  round: Round(
+    id: const RoundId('rd-r2'),
+    roomId: emptyRoomId,
+    startsAt: now.subtract(const Duration(minutes: 1)),
+    endsAt: now.add(const Duration(minutes: 9)),
+  ),
+  proposals: const [],
+  votes: const [],
+);
 
 RoomSnapshot demoRoom(DateTime now) {
   DateTime ago(int minutes) => now.subtract(Duration(minutes: minutes));
@@ -50,11 +73,7 @@ RoomSnapshot demoRoom(DateTime now) {
   );
 
   return RoomSnapshot(
-    room: const Room(
-      id: demoRoomId,
-      name: 'Petak u Studentskom',
-      hostId: UserId('h1'),
-    ),
+    room: const Room(id: demoRoomId, name: _demoRoomName, hostId: UserId('h1')),
     round: round,
     proposals: [
       proposal(

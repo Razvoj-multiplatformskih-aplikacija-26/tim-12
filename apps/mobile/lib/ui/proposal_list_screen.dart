@@ -20,9 +20,14 @@ import 'vote_confirmation.dart';
 class ProposalListScreen extends StatelessWidget {
   const ProposalListScreen({
     super.key,
+    required this.roomId,
     required this.currentUser,
+    this.rooms = const {},
     this.onSimulateError,
   });
+
+  /// Soba iz adrese.
+  final RoomId roomId;
 
   /// Tekuci korisnik (u KT1 fiksan; u KT2 ga daje prijava) — za oznaku
   /// "Tvoj predlog".
@@ -32,6 +37,10 @@ class ProposalListScreen extends StatelessWidget {
   /// (`main.dart`); bez njega stavka menija se ne prikazuje, pa zamena
   /// implementacije porta ne menja ovaj ekran.
   final VoidCallback? onSimulateError;
+
+  /// Sobe za brzi prelaz u meniju (naziv po sobi). Daje ih `main.dart`
+  /// (u KT1 demo sobe; u KT2 stizu sa servera) — ekran ne zna odakle.
+  final Map<RoomId, String> rooms;
 
   @override
   Widget build(BuildContext context) {
@@ -46,13 +55,27 @@ class ProposalListScreen extends StatelessWidget {
           builder: (_, title) => Text(title),
         ),
         actions: [
-          if (onSimulateError != null)
+          if (onSimulateError != null || rooms.length > 1)
             PopupMenuButton<void>(
               itemBuilder: (_) => [
-                PopupMenuItem(
-                  onTap: onSimulateError,
-                  child: const Text('Simuliraj grešku'),
-                ),
+                // Prelaz u drugu sobu: nova adresa → nov Bloc za tu sobu.
+                for (final MapEntry(key: id, value: name) in rooms.entries)
+                  if (id != roomId)
+                    PopupMenuItem(
+                      onTap: () => context.go(roomPath(id)),
+                      child: ListTile(
+                        leading: const Icon(Icons.meeting_room_outlined),
+                        title: Text(name),
+                      ),
+                    ),
+                if (onSimulateError != null)
+                  PopupMenuItem(
+                    onTap: onSimulateError,
+                    child: const ListTile(
+                      leading: Icon(Icons.error_outline),
+                      title: Text('Simuliraj grešku'),
+                    ),
+                  ),
               ],
             ),
         ],
