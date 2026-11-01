@@ -10,6 +10,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
+import 'now_tab.dart';
 import 'proposal_list_screen.dart';
 import 'search_tab.dart';
 
@@ -83,7 +84,7 @@ class _RoomShellState extends State<RoomShell>
               currentUser: widget.currentUser,
               onSimulateError: widget.onSimulateError,
             ),
-            const _NowPlaceholder(),
+            const NowTab(),
           ],
         ),
         // FAB samo na Glasaj tabu i samo kad su podaci sobe tu.
@@ -121,13 +122,4 @@ class _RoomShellState extends State<RoomShell>
       ),
     );
   }
-}
-
-/// Privremeno do koraka 5 (sadrzaj iz stash MVP-a).
-class _NowPlaceholder extends StatelessWidget {
-  const _NowPlaceholder();
-
-  @override
-  Widget build(BuildContext context) =>
-      const Center(child: Text('Trenutno — uskoro'));
 }

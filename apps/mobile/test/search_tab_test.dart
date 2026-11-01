@@ -99,7 +99,9 @@ void main() {
 
     await tester.fling(find.byType(TabBarView), const Offset(-300, 0), 800);
     await tester.pumpAndSettle();
-    expect(find.text('Trenutno — uskoro'), findsOneWidget);
+    // Trenutno tab: pobednik kartica i lider umesto liste glasanja.
+    expect(find.text('Sledeća · pobednik runde'), findsOneWidget);
+    expect(find.textContaining('Vodi Fuego'), findsOneWidget);
 
     await tester.fling(find.byType(TabBarView), const Offset(300, 0), 800);
     await tester.pumpAndSettle();
