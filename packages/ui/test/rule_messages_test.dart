@@ -1,7 +1,7 @@
 // Poruke pravila: svaki tip greske daje srpski tekst sa podacima iz greske.
 import 'package:flutter_test/flutter_test.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
-import 'package:radioroom_mobile/ui/rule_messages.dart';
+import 'package:radioroom_ui/radioroom_ui.dart';
 
 void main() {
   test('max aktivnih predloga: broj i limit iz greske', () {

@@ -6,6 +6,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'data/demo_room.dart';
 import 'data/fake_proposal_repository.dart';
@@ -24,9 +25,9 @@ class RadioRoomApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'RadioRoom',
-      theme: ThemeData(
-        colorScheme: .fromSeed(seedColor: Colors.deepPurple),
-      ),
+      theme: radioRoomTheme(Brightness.light),
+      darkTheme: radioRoomTheme(Brightness.dark),
+      themeMode: ThemeMode.system,
       home: BlocProvider(
         create: (_) => ProposalListBloc(
           repository: repository,
