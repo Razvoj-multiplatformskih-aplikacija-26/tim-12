@@ -59,6 +59,9 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  # Pravi ikonice za platforme iz assets/icon/ (vidi tool/render_icon_test.dart).
+  flutter_launcher_icons: ^0.14.4
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
@@ -100,3 +103,21 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Ikonica aplikacije: `dart run flutter_launcher_icons` iz apps/mobile.
+# Izvorne slike crta `flutter test tool/render_icon_test.dart`.
+flutter_launcher_icons:
+  image_path: assets/icon/icon.png
+  android: true
+  adaptive_icon_background: "#5B3FD9"
+  adaptive_icon_foreground: assets/icon/icon_foreground.png
+  # Motiv u icon_foreground.png vec postuje bezbednu zonu — bez dodatnog uvlacenja.
+  adaptive_icon_foreground_inset: 0
+  ios: true
+  # App Store odbija providnost u ikonici.
+  remove_alpha_ios: true
+  web:
+    generate: true
+    image_path: assets/icon/icon.png
+    background_color: "#5B3FD9"
+    theme_color: "#5B3FD9"
