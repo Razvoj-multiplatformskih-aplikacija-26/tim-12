@@ -42,4 +42,18 @@ void main() {
       'Tvoj glas u ovoj rundi je već zabeležen.',
     );
   });
+
+  test('uklanjanje zavrsenog predloga', () {
+    expect(
+      ruleMessage(const ProposalNotRemovable(proposalId: ProposalId('p10'))),
+      'Ovaj predlog je već završen i ne može da se ukloni.',
+    );
+  });
+
+  test('zatvaranje zatvorene sobe', () {
+    expect(
+      ruleMessage(const RoomNotClosable()),
+      'Ova soba je već zatvorena.',
+    );
+  });
 }

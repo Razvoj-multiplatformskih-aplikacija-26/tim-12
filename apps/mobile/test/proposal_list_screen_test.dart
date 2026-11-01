@@ -45,6 +45,19 @@ final class _TestRepository implements ProposalRepository {
     required ProposalId proposalId,
     required UserId voterId,
   }) => throw UnimplementedError();
+
+  @override
+  Future<List<Room>> loadRooms() => throw UnimplementedError();
+
+  @override
+  Future<Proposal> removeProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<Room> closeRoom({required RoomId roomId}) =>
+      throw UnimplementedError();
 }
 
 RoomSnapshot _empty() {

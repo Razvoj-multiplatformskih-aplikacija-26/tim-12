@@ -28,4 +28,17 @@ abstract interface class ProposalRepository {
     required ProposalId proposalId,
     required UserId voterId,
   });
+
+  /// Lista svih soba (moderatorski pregled).
+  Future<List<Room>> loadRooms();
+
+  /// Uklanja predlog (prelaz u `Removed`) i vraca ga. Pravilo uklanjanja
+  /// proverava Bloc domenom pre poziva — port samo izvrsava.
+  Future<Proposal> removeProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  });
+
+  /// Zatvara sobu (prelaz u `RoomClosed`) i vraca je. Prelaz proverava Bloc.
+  Future<Room> closeRoom({required RoomId roomId});
 }
