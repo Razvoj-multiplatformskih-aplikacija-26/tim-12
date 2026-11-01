@@ -8,6 +8,7 @@ export 'src/playback.dart';
 export 'src/proposal.dart';
 export 'src/proposal_status.dart';
 export 'src/room.dart';
+export 'src/room_status.dart';
 export 'src/round.dart';
 export 'src/rules/proposal_rules.dart';
 export 'src/rules/round_resolution.dart';
