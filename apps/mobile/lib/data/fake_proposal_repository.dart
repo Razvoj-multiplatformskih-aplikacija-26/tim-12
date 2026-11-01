@@ -15,11 +15,9 @@ final class FakeProposalRepository implements ProposalRepository {
     DateTime Function()? clock,
     this.delay = const Duration(milliseconds: 800),
   }) : _clock = clock ?? DateTime.now {
-    final seed = demoRoom(_clock());
-    _room = seed.room;
-    _round = seed.round;
-    _proposals.addAll(seed.proposals);
-    _votes.addAll(seed.votes);
+    for (final seed in [demoRoom(_clock()), emptyRoom(_clock())]) {
+      _rooms[seed.room.id] = _RoomData(seed);
+    }
   }
 
   final DateTime Function() _clock;
@@ -31,24 +29,22 @@ final class FakeProposalRepository implements ProposalRepository {
   /// Ekran ga pali stavkom menija "Simuliraj gresku".
   bool failNext = false;
 
-  late final Room _room;
-  late final Round _round;
-  final List<Proposal> _proposals = [];
-  final List<Vote> _votes = [];
+  /// Sobe po ID-ju; svaka sa svojim predlozima i glasovima.
+  final Map<RoomId, _RoomData> _rooms = {};
   var _nextProposal = 13;
   var _nextVote = 4;
 
   @override
   Future<RoomSnapshot> loadRoom(RoomId roomId) async {
     await _request();
-    if (roomId != _room.id) throw Exception('Nepoznata soba: $roomId');
+    final data = _room(roomId);
     // Kopije, ne unutrasnje liste: kasniji upis ne sme da promeni snimak
     // koji vec drzi stanje Bloc-a.
     return RoomSnapshot(
-      room: _room,
-      round: _round,
-      proposals: List.unmodifiable(_proposals),
-      votes: List.unmodifiable(_votes),
+      room: data.room,
+      round: data.round,
+      proposals: List.unmodifiable(data.proposals),
+      votes: List.unmodifiable(data.votes),
     );
   }
 
@@ -67,7 +63,7 @@ final class FakeProposalRepository implements ProposalRepository {
       proposedAt: _clock(),
       status: const Proposed(),
     );
-    _proposals.add(proposal);
+    _room(roomId).proposals.add(proposal);
     return proposal;
   }
 
@@ -78,6 +74,8 @@ final class FakeProposalRepository implements ProposalRepository {
     required UserId voterId,
   }) async {
     await _request();
+    final data = _rooms.values.where((r) => r.round.id == roundId).firstOrNull;
+    if (data == null) throw Exception('Nepoznata runda: $roundId');
     final vote = Vote(
       id: VoteId('v${_nextVote++}'),
       roundId: roundId,
@@ -85,9 +83,12 @@ final class FakeProposalRepository implements ProposalRepository {
       voterId: voterId,
       castAt: _clock(),
     );
-    _votes.add(vote);
+    data.votes.add(vote);
     return vote;
   }
+
+  _RoomData _room(RoomId roomId) =>
+      _rooms[roomId] ?? (throw Exception('Nepoznata soba: $roomId'));
 
   /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska.
   Future<void> _request() async {
@@ -97,4 +98,18 @@ final class FakeProposalRepository implements ProposalRepository {
       throw Exception('Simulirana greska');
     }
   }
+}
+
+/// Promenljivi podaci jedne sobe (samo unutar laznog repozitorijuma).
+final class _RoomData {
+  _RoomData(RoomSnapshot seed)
+    : room = seed.room,
+      round = seed.round,
+      proposals = [...seed.proposals],
+      votes = [...seed.votes];
+
+  final Room room;
+  final Round round;
+  final List<Proposal> proposals;
+  final List<Vote> votes;
 }

@@ -18,6 +18,7 @@ void main() {
       router: createRouter(
         repository: repository,
         currentUser: demoUser,
+        rooms: demoRooms,
         onSimulateError: () => repository.failNext = true,
       ),
     ),

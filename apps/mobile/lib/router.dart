@@ -26,6 +26,7 @@ import 'ui/proposal_list_screen.dart';
 GoRouter createRouter({
   required ProposalRepository repository,
   required UserId currentUser,
+  Map<RoomId, String> rooms = const {},
   VoidCallback? onSimulateError,
 }) => GoRouter(
   initialLocation: roomPath(demoRoomId),
@@ -48,8 +49,10 @@ GoRouter createRouter({
       routes: [
         GoRoute(
           path: '/soba/:roomId',
-          builder: (_, _) => ProposalListScreen(
+          builder: (_, state) => ProposalListScreen(
+            roomId: RoomId(state.pathParameters['roomId']!),
             currentUser: currentUser,
+            rooms: rooms,
             onSimulateError: onSimulateError,
           ),
           // Pod-rute: lista ostaje ispod forme i detalja, pa "nazad" radi sam.
