@@ -22,13 +22,11 @@ class RoomShell extends StatefulWidget {
     super.key,
     required this.roomId,
     required this.currentUser,
-    this.rooms = const {},
     this.onSimulateError,
   });
 
   final RoomId roomId;
   final UserId currentUser;
-  final Map<RoomId, String> rooms;
   final VoidCallback? onSimulateError;
 
   @override
@@ -68,7 +66,6 @@ class _RoomShellState extends State<RoomShell>
               key: ValueKey(widget.roomId),
               roomId: widget.roomId,
               currentUser: widget.currentUser,
-              rooms: widget.rooms,
               onSimulateError: widget.onSimulateError,
             ),
             const _NowPlaceholder(),

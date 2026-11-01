@@ -148,6 +148,17 @@ void main() {
   ) async {
     await _pumpScreen(tester, _TestRepository(snapshot: demoRoom(_now)));
     await tester.pump(_delay);
+    // p5 (predlozena) ceka u sklopljenoj sekciji na dnu — prvo skroluj.
+    await tester.scrollUntilVisible(
+      find.textContaining('Na čekanju'),
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.tap(find.textContaining('Na čekanju'));
+    await tester.pumpAndSettle();
     // u1 u demo podacima: p3 (u glasanju) i p5 (predlozena).
     for (final title in ['Đurđevdan', 'Mesečina']) {
       final tile = find.ancestor(

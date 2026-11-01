@@ -26,7 +26,6 @@ import 'ui/rooms_screen.dart';
 GoRouter createRouter({
   required ProposalRepository repository,
   required UserId currentUser,
-  Map<RoomId, String> rooms = const {},
   VoidCallback? onSimulateError,
 }) => GoRouter(
   initialLocation: '/sobe',
@@ -62,7 +61,6 @@ GoRouter createRouter({
           builder: (_, state) => RoomShell(
             roomId: RoomId(state.pathParameters['roomId']!),
             currentUser: currentUser,
-            rooms: rooms,
             onSimulateError: onSimulateError,
           ),
           // Pod-rute: lista ostaje ispod forme i detalja, pa "nazad" radi sam.

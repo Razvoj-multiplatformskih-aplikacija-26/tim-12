@@ -1,10 +1,11 @@
-// Ekran glavnog toka slusaoca: 4 stanja (ucitavanje / greska / prazno /
-// podaci), predlog pesme i glas.
+// Ekran glasanja (tab Glasaj): Winner/Next kartica + lista glasanja.
 //
 // Ekran samo salje dogadjaje i crta stanje Bloc-a: ne zna za implementaciju
-// porta niti racuna pravila. Tehnicka greska je ekran greske sa "Pokusaj
-// ponovo"; prekrsaj pravila je SnackBar koji prikazuje ruter za celu sobu
-// (pravilo != greska).
+// porta niti racuna pravila. Prikazuje se samo ono o cemu se glasa:
+// pobednik (sledeca), predlozi u glasanju sortirani po glasovima i
+// predlozeni na cekanju (sklopljeno). Rejected/Removed se ne crtaju nigde.
+// Tehnicka greska je ekran greske sa "Pokusaj ponovo"; prekrsaj pravila je
+// SnackBar koji prikazuje ruter za celu sobu (pravilo != greska).
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -22,7 +23,6 @@ class ProposalListScreen extends StatelessWidget {
     super.key,
     required this.roomId,
     required this.currentUser,
-    this.rooms = const {},
     this.onSimulateError,
   });
 
@@ -38,10 +38,6 @@ class ProposalListScreen extends StatelessWidget {
   /// implementacije porta ne menja ovaj ekran.
   final VoidCallback? onSimulateError;
 
-  /// Sobe za brzi prelaz u meniju (naziv po sobi). Daje ih `main.dart`
-  /// (u KT1 demo sobe; u KT2 stizu sa servera) — ekran ne zna odakle.
-  final Map<RoomId, String> rooms;
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -55,27 +51,18 @@ class ProposalListScreen extends StatelessWidget {
           builder: (_, title) => Text(title),
         ),
         actions: [
-          if (onSimulateError != null || rooms.length > 1)
+          // Prelaz medju sobama zivi na home-u (/sobe); ovde je samo
+          // okidac greske za probu porta.
+          if (onSimulateError != null)
             PopupMenuButton<void>(
               itemBuilder: (_) => [
-                // Prelaz u drugu sobu: nova adresa → nov Bloc za tu sobu.
-                for (final MapEntry(key: id, value: name) in rooms.entries)
-                  if (id != roomId)
-                    PopupMenuItem(
-                      onTap: () => context.go(roomPath(id)),
-                      child: ListTile(
-                        leading: const Icon(Icons.meeting_room_outlined),
-                        title: Text(name),
-                      ),
-                    ),
-                if (onSimulateError != null)
-                  PopupMenuItem(
-                    onTap: onSimulateError,
-                    child: const ListTile(
-                      leading: Icon(Icons.error_outline),
-                      title: Text('Simuliraj grešku'),
-                    ),
+                PopupMenuItem(
+                  onTap: onSimulateError,
+                  child: const ListTile(
+                    leading: Icon(Icons.error_outline),
+                    title: Text('Simuliraj grešku'),
                   ),
+                ),
               ],
             ),
         ],
@@ -131,28 +118,101 @@ class _ProposalList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final proposals = snapshot.proposals;
-    return ListView.builder(
+    // Samo ono o cemu se glasa ili ce se glasati: pobednik, u glasanju
+    // (sortirano kao tie-break u domenu: glasovi opadajuce, vreme rastuce)
+    // i predlozeni na cekanju. Rejected/Removed se ne crtaju nigde.
+    final inVoting = snapshot.proposals
+        .where((p) => p.status is InVoting)
+        .toList()
+      ..sort((a, b) {
+        final byVotes = (tally[b.id] ?? 0).compareTo(tally[a.id] ?? 0);
+        if (byVotes != 0) return byVotes;
+        return a.proposedAt.compareTo(b.proposedAt);
+      });
+    final waiting = snapshot.proposals
+        .where((p) => p.status is Proposed)
+        .toList();
+    final winner = snapshot.proposals.where((p) => p.status is Winner);
+    final nowPlaying = currentPlaying(
+      proposals: snapshot.proposals,
+      now: DateTime.now(),
+    );
+    return ListView(
       // Mesto ispod poslednjeg reda da ga FAB ne prekrije.
       padding: const EdgeInsets.only(bottom: 88),
-      itemCount: proposals.length + 1,
-      itemBuilder: (context, index) {
-        if (index == 0) {
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-            child: Text(
-              'Runda traje do ${clockTime(snapshot.round.endsAt)}',
-              style: Theme.of(context).textTheme.titleMedium,
-            ),
-          );
-        }
-        final p = proposals[index - 1];
-        return _ProposalTile(
-          proposal: p,
-          votes: tally[p.id] ?? 0,
-          isOwn: p.proposedBy == currentUser,
-        );
-      },
+      children: [
+        if (winner.isNotEmpty || nowPlaying != null)
+          _NextCard(
+            winner: winner.firstOrNull,
+            nowPlaying: nowPlaying,
+          ),
+        if (inVoting.isEmpty && waiting.isEmpty)
+          const ListTile(
+            title: Text('Nema predloga u glasanju.'),
+          ),
+        for (final p in inVoting)
+          _ProposalTile(
+            proposal: p,
+            votes: tally[p.id] ?? 0,
+            isOwn: p.proposedBy == currentUser,
+          ),
+        if (waiting.isNotEmpty)
+          ExpansionTile(
+            title: Text('Na čekanju (${waiting.length})'),
+            children: [
+              for (final p in waiting)
+                _ProposalTile(
+                  proposal: p,
+                  votes: tally[p.id] ?? 0,
+                  isOwn: p.proposedBy == currentUser,
+                ),
+            ],
+          ),
+      ],
+    );
+  }
+}
+
+/// Kompaktna kartica vrha glasanja: pobednik (sledeca) + sta sada ide.
+/// Bez odbrojavanja — ono zivi na tabu Trenutno.
+class _NextCard extends StatelessWidget {
+  const _NextCard({this.winner, this.nowPlaying});
+
+  final Proposal? winner;
+  final Proposal? nowPlaying;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (nowPlaying != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.play_circle_outline),
+                title: Text(nowPlaying!.song.title),
+                subtitle: Text('Sada ide · ${nowPlaying!.song.artist}'),
+                onTap: () => context.go(
+                  proposalPath(nowPlaying!.roomId, nowPlaying!.id),
+                ),
+              ),
+            if (winner != null)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.emoji_events_outlined),
+                title: Text(winner!.song.title),
+                subtitle: Text('Sledeća · ${winner!.song.artist}'),
+                onTap: () => context.go(
+                  proposalPath(winner!.roomId, winner!.id),
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

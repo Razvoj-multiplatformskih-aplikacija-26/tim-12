@@ -117,17 +117,34 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1');
-    // Glasaj tab je u TabBarView-u (dva ugnjezdena Scrollable-a):
-    // skroluje se unutrasnja lista, ne bar.
+    // Nov predlog je predlozen: ceka u sklopljenoj sekciji na dnu liste —
+    // prvo skroluj do nje (lenjo montiranje), pa rasklopi.
     await tester.scrollUntilVisible(
-      find.text('Under Pressure'),
+      find.textContaining('Na čekanju'),
       200,
-      scrollable: find.byType(Scrollable).at(1),
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
     );
+    await tester.tap(find.textContaining('Na čekanju'));
+    await tester.pumpAndSettle();
+    // Red dovedi u sredinu da tap sigurno pogodi (delimicno vidljiv red
+    // vara hit-test kroz donji bar).
     final tile = find.ancestor(
       of: find.text('Under Pressure'),
       matching: find.byType(ListTile),
     );
+    await tester.scrollUntilVisible(
+      tile,
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.ensureVisible(tile);
+    await tester.pumpAndSettle();
     expect(
       find.descendant(of: tile, matching: find.text('Tvoj predlog')),
       findsOneWidget,
