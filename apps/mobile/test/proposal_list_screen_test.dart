@@ -67,7 +67,7 @@ Future<void> _pumpScreen(WidgetTester tester, _TestRepository repo) =>
             currentUser: demoUser,
             clock: () => _now,
           )..add(const ProposalsRequested()),
-          child: const ProposalListScreen(),
+          child: const ProposalListScreen(currentUser: demoUser),
         ),
       ),
     );
@@ -120,5 +120,24 @@ void main() {
     await _pumpScreen(tester, _TestRepository(snapshot: demoRoom(_now)));
     await tester.pump(_delay);
     expect(find.byType(PopupMenuButton<void>), findsNothing);
+  });
+
+  testWidgets('oznaka "Tvoj predlog" samo na predlozima tekuceg korisnika', (
+    tester,
+  ) async {
+    await _pumpScreen(tester, _TestRepository(snapshot: demoRoom(_now)));
+    await tester.pump(_delay);
+    // u1 u demo podacima: p3 (u glasanju) i p5 (predlozena).
+    for (final title in ['Đurđevdan', 'Mesečina']) {
+      final tile = find.ancestor(
+        of: find.text(title),
+        matching: find.byType(ListTile),
+      );
+      expect(
+        find.descendant(of: tile, matching: find.text('Tvoj predlog')),
+        findsOneWidget,
+      );
+    }
+    expect(find.text('Tvoj predlog'), findsNWidgets(2));
   });
 }
