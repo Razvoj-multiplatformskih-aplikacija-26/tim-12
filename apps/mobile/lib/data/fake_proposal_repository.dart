@@ -87,7 +87,6 @@ final class FakeProposalRepository implements ProposalRepository {
     return vote;
   }
 
-<<<<<<< HEAD
   _RoomData _room(RoomId roomId) =>
       _rooms[roomId] ?? (throw Exception('Nepoznata soba: $roomId'));
 
