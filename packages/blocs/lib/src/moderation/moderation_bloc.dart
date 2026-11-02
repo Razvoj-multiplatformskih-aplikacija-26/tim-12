@@ -137,8 +137,10 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
         _ => null,
       };
 
-  ModerationLoaded? get _currentLoaded =>
-      state is ModerationLoaded ? state as ModerationLoaded : null;
+  ModerationLoaded? get _currentLoaded => switch (state) {
+        ModerationLoaded loaded => loaded,
+        _ => null,
+      };
 
   ModerationState _loaded(List<Room> rooms, RoomSnapshot? snapshot) {
     if (snapshot == null) return ModerationLoaded(rooms: rooms);

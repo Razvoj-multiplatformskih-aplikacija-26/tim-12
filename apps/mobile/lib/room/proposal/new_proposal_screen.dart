@@ -16,8 +16,8 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import '../paths.dart';
-import 'room_error_view.dart';
+import '../../paths.dart';
+import '../shared/room_error_view.dart';
 
 class NewProposalScreen extends StatefulWidget {
   const NewProposalScreen({

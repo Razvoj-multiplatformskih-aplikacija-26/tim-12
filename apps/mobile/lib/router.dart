@@ -19,10 +19,10 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import 'ui/new_proposal_screen.dart';
-import 'ui/proposal_detail_screen.dart';
-import 'ui/room_shell.dart';
-import 'ui/rooms_screen.dart';
+import 'home/rooms_screen.dart';
+import 'room/proposal/new_proposal_screen.dart';
+import 'room/proposal/proposal_detail_screen.dart';
+import 'room/room_shell.dart';
 
 GoRouter createRouter({
   required ProposalRepository repository,
@@ -102,10 +102,11 @@ class _RuleErrorListener extends StatelessWidget {
         listenWhen: (_, state) =>
             state is ProposalsLoaded && state.ruleError != null,
         listener: (context, state) {
-          final error = (state as ProposalsLoaded).ruleError!;
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          if (state case ProposalsLoaded(ruleError: final error?)) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          }
         },
         child: child,
       );

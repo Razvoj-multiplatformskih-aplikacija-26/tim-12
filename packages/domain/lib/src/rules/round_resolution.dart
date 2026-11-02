@@ -5,11 +5,11 @@
 // se odbacuje. U KT1 ovo su cista izracunavanja nad listama (konacnu odluku
 // donosi server tek u KT2) — zato zive u odvojenom fajlu od form-pravila:
 // granica buduce selidbe na server vidi se golim okom.
-import '../ids.dart';
-import '../proposal.dart';
-import '../proposal_status.dart';
-import '../round.dart';
-import '../vote.dart';
+import '../models/ids.dart';
+import '../models/proposal.dart';
+import '../states/proposal_status.dart';
+import '../models/round.dart';
+import '../models/vote.dart';
 
 /// Ishod razresenja runde: pobednik ili runde bez pobednika.
 sealed class RoundOutcome {
@@ -57,10 +57,27 @@ Map<ProposalId, int> voteTally({
   return counts;
 }
 
-/// Razresava rundu: pobednik je predlog sa najvise vazecih glasova
-/// (vise u [voteTally]). Neresen rezultat (odluka O7): sortiranje (glasovi
-/// opadajuce, vreme predlaganja rastuce), pa za potpuni determinizam jos
-/// i identifikator — isti ulaz uvek daje istog pobednika.
+/// Poredak glasanja (leaderboard): glasovi opadajuce, vreme predlaganja
+/// rastuce, pa identifikator za potpuni determinizam.
+///
+/// Jedina prica o redosledu na svim mestima: koriste je i [resolveRound]
+/// (izbor pobednika) i [carryOver] (rang gubitnika) i ekrani (prikaz liste).
+/// Promena tie-break pravila menja se ovde na jednom mestu. [counts] je
+/// brojanje glasova iste runde (npr. iz [voteTally]).
+int compareVotingOrder(
+  Proposal a,
+  Proposal b,
+  Map<ProposalId, int> counts,
+) {
+  final byVotes = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
+  if (byVotes != 0) return byVotes;
+  final byTime = a.proposedAt.compareTo(b.proposedAt);
+  if (byTime != 0) return byTime;
+  return a.id.value.compareTo(b.id.value);
+}
+
+/// Razresava rundu: pobednik je prvi u [compareVotingOrder] poretku medju
+/// predlozima sa bar jednim vazecim glasom (vise u [voteTally]).
 ///
 /// Glasovi za predloge van prosledjene liste ignorisu se (odbrambeno:
 /// pogresna lista ne sme srusiti obracun). Bez ijednog vaznog glasa —
@@ -74,15 +91,7 @@ RoundOutcome resolveRound({
   final counts = voteTally(round: round, proposals: proposals, votes: votes);
   if (counts.isEmpty) return const RoundWithoutWinner();
   final ranked = counts.entries.toList()
-    ..sort((a, b) {
-      final byVotes = b.value.compareTo(a.value);
-      if (byVotes != 0) return byVotes;
-      final byTime = byId[a.key]!.proposedAt.compareTo(
-        byId[b.key]!.proposedAt,
-      );
-      if (byTime != 0) return byTime;
-      return a.key.value.compareTo(b.key.value);
-    });
+    ..sort((a, b) => compareVotingOrder(byId[a.key]!, byId[b.key]!, counts));
   final first = ranked.first;
   return RoundWinner(proposal: byId[first.key]!, voteCount: first.value);
 }
@@ -95,7 +104,7 @@ RoundOutcome resolveRound({
 /// strukturom (glasovi su vezani za rundu i stari ID), bez ikakvog koda za
 /// reset. Gubitnik bez glasova ispada; ne-`Rejected` u ulazu ignorise se.
 ///
-/// Redosled: rang runde (glasovi opadajuce, vreme rastuce, ID), pa kap
+/// Redosled: [compareVotingOrder] (isti rang kao pobednik), pa kap
 /// [maxCarry] (default 5; 0 = prenos iskljucen, u KT2 se seli u RoomSettings).
 /// ID-jeve donosi pozivalac (u KT2 server sa UUID) — domen ih ne izmislja.
 List<Proposal> carryOver({
@@ -115,13 +124,7 @@ List<Proposal> carryOver({
   final ranked = rejected
       .where((p) => p.status is Rejected && (counts[p.id] ?? 0) > 0)
       .toList()
-    ..sort((a, b) {
-      final byVotes = (counts[b.id] ?? 0).compareTo(counts[a.id] ?? 0);
-      if (byVotes != 0) return byVotes;
-      final byTime = a.proposedAt.compareTo(b.proposedAt);
-      if (byTime != 0) return byTime;
-      return a.id.value.compareTo(b.id.value);
-    });
+    ..sort((a, b) => compareVotingOrder(a, b, counts));
   return ranked
       .take(maxCarry)
       .map(

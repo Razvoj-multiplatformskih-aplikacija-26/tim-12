@@ -13,10 +13,10 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import '../paths.dart';
-import 'proposal_labels.dart';
-import 'room_error_view.dart';
-import 'vote_confirmation.dart';
+import '../../paths.dart';
+import '../shared/proposal_labels.dart';
+import '../shared/room_error_view.dart';
+import '../shared/vote_confirmation.dart';
 
 class ProposalListScreen extends StatelessWidget {
   const ProposalListScreen({
@@ -86,17 +86,13 @@ class _ProposalList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Samo ono o cemu se glasa ili ce se glasati: sledeca pesma (pobednik)
-    // na vrhu, predlozi u glasanju sortirani kao tie-break u domenu
-    // (glasovi opadajuce, vreme rastuce) i predlozeni na cekanju.
+    // na vrhu, predlozi u glasanju u domenskom poretku glasanja
+    // (`compareVotingOrder`, isti kao za pobednika) i predlozeni na cekanju.
     // Rejected/Removed se ne crtaju nigde.
     final inVoting = snapshot.proposals
         .where((p) => p.status is InVoting)
         .toList()
-      ..sort((a, b) {
-        final byVotes = (tally[b.id] ?? 0).compareTo(tally[a.id] ?? 0);
-        if (byVotes != 0) return byVotes;
-        return a.proposedAt.compareTo(b.proposedAt);
-      });
+      ..sort((a, b) => compareVotingOrder(a, b, tally));
     final waiting = snapshot.proposals
         .where((p) => p.status is Proposed)
         .toList();

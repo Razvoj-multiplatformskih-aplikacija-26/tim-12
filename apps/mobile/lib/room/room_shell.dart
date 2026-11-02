@@ -1,0 +1,249 @@
+// Skoljka sobe: tri taba — Pretraga | Glasaj | Trenutno.
+//
+// Swipe (`TabBarView`) i donji bar (`NavigationBar`) vozi isti
+// `TabController`; podrazumevani je Glasaj (sredina). Tabovi su stanje
+// ekrana sobe, ne adrese: pod-rute (`novi`, `predlog/:id`) ostaju ispod,
+// pa "nazad" sa njih vraca na ovu skoljkU. Deljeni Bloc i SnackBar za
+// `ruleError` zive na nivou sobe kao pre (obrazac iz stash MVP-a).
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:go_router/go_router.dart';
+import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_domain/radioroom_domain.dart';
+
+import 'tabs/now_tab.dart';
+import 'tabs/proposal_list_screen.dart';
+import 'tabs/search_tab.dart';
+
+/// Redosled tabova; sredina je podrazumevana (glasanje je primarna radnja).
+enum RoomTab { search, vote, now }
+
+/// Podrazumevani rezim kad prekidac nije dat (sistemska tema, bez menija).
+final _systemThemeMode = ValueNotifier(ThemeMode.system);
+
+/// Labela suprotnog rezima: iz tamne u svetlu i obrnuto (sistemska se
+/// tretira kao svetla).
+String _themeLabel(ThemeMode mode) =>
+    mode == ThemeMode.dark ? 'Svetla tema' : 'Tamna tema';
+
+/// Ikonica suprotnog rezima.
+IconData _themeIcon(ThemeMode mode) => mode == ThemeMode.dark
+    ? Icons.light_mode_outlined
+    : Icons.dark_mode_outlined;
+
+class RoomShell extends StatefulWidget {
+  const RoomShell({
+    super.key,
+    required this.roomId,
+    required this.currentUser,
+    this.onSimulateError,
+    this.themeMode,
+    this.onToggleTheme,
+  });
+
+  final RoomId roomId;
+  final UserId currentUser;
+  final VoidCallback? onSimulateError;
+
+  /// Tekuci rezim teme (za labelu stavke) i prekidac na sledeci.
+  /// Bez prekidaca stavke teme nema — meni tad ima samo gresku (ili ga
+  /// uopste nema bez okidaca).
+  final ValueListenable<ThemeMode>? themeMode;
+  final VoidCallback? onToggleTheme;
+
+  @override
+  State<RoomShell> createState() => _RoomShellState();
+}
+
+/// Kasnjenje fokusa posle prelaska na tab: polje pretrage se montira sa
+/// tabom, pa fokus stize tek nakon kraja animacije prelaska (~300ms).
+/// Bez kasnjenja zahtev ode u prazno i tastatura se ne otvori.
+const _focusAfterTabAnimation = Duration(milliseconds: 350);
+
+class _RoomShellState extends State<RoomShell>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabs;
+
+  /// Fokus polja pretrage: FAB ga trazi kad prebaci na Pretraga tab.
+  /// Polje se montira sa tabom, pa fokus stize nakon kraja animacije.
+  final _searchFocus = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabs = TabController(
+      length: RoomTab.values.length,
+      initialIndex: RoomTab.vote.index,
+      vsync: this,
+    );
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    _searchFocus.dispose();
+    super.dispose();
+  }
+
+  void _goSearch() {
+    _tabs.animateTo(RoomTab.search.index);
+    Future.delayed(_focusAfterTabAnimation, () {
+      if (mounted) _searchFocus.requestFocus();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    // Skoljka je staticna: FAB i donji bar slusaju tabove svako za sebe,
+    // pa swipe animacija vise ne rebuild-uje AppBar i TabBarView na svaki
+    // tik (to se na sporijim uredjajima osecalo kao kasnjenje taba).
+    return PopScope(
+      // Sistemski "nazad" sa tabova vodi na home, ne iz aplikacije.
+      // Pod-rute (`novi`, `predlog/:id`) su posebni ekrani iznad skoljke:
+      // skoljka tamo nije u stablu pa se njihov "nazad" ne dira.
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (!didPop) context.go('/sobe');
+      },
+      child: Scaffold(
+        appBar: AppBar(
+          leading: IconButton(
+            tooltip: 'Nazad na sobe',
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/sobe'),
+          ),
+          title: BlocSelector<ProposalListBloc, ProposalListState, String>(
+            selector: (state) => switch (state) {
+              ProposalsLoaded(:final snapshot) ||
+              ProposalsEmpty(:final snapshot) => snapshot.room.name,
+              _ => 'RadioRoom',
+            },
+            builder: (_, title) => Text(title),
+          ),
+          actions: [
+            // Meni postoji kad ima bar jedna stavka: tema uvek (ako je
+            // dat prekidac), okidac greske samo uz dati okidac.
+            if (widget.onToggleTheme != null ||
+                widget.onSimulateError != null)
+              ValueListenableBuilder(
+                valueListenable:
+                    widget.themeMode ?? _systemThemeMode,
+                builder: (_, mode, _) => PopupMenuButton<void>(
+                  itemBuilder: (_) => [
+                    if (widget.onToggleTheme != null)
+                      PopupMenuItem(
+                        onTap: widget.onToggleTheme,
+                        child: ListTile(
+                          leading: Icon(_themeIcon(mode)),
+                          title: Text(_themeLabel(mode)),
+                        ),
+                      ),
+                    if (widget.onSimulateError != null)
+                      PopupMenuItem(
+                        onTap: widget.onSimulateError,
+                        child: const ListTile(
+                          leading: Icon(Icons.error_outline),
+                          title: Text('Simuliraj grešku'),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+          ],
+        ),
+        body: TabBarView(
+          controller: _tabs,
+          children: [
+            SearchTab(
+              focusNode: _searchFocus,
+              onAccepted: () => _tabs.animateTo(RoomTab.vote.index),
+              currentUser: widget.currentUser,
+            ),
+            ProposalListScreen(
+              key: ValueKey(widget.roomId),
+              roomId: widget.roomId,
+              currentUser: widget.currentUser,
+            ),
+            const NowTab(),
+          ],
+        ),
+        floatingActionButton: _RoomFab(tabs: _tabs, onAdd: _goSearch),
+        bottomNavigationBar: _RoomNavBar(tabs: _tabs),
+      ),
+    );
+  }
+}
+
+/// FAB "Predlozi pesmu": samo na Glasaj tabu i samo kad su podaci sobe tu.
+/// Slusa tabove sam za sebe — ostatak skoljke se ne rebuild-uje.
+class _RoomFab extends StatelessWidget {
+  const _RoomFab({required this.tabs, required this.onAdd});
+
+  final TabController tabs;
+  final VoidCallback onAdd;
+
+  @override
+  Widget build(BuildContext context) {
+    return ListenableBuilder(
+      listenable: tabs,
+      builder: (_, _) => tabs.index == RoomTab.vote.index
+          ? BlocSelector<ProposalListBloc, ProposalListState, bool>(
+              selector: (state) =>
+                  state is ProposalsLoaded || state is ProposalsEmpty,
+              builder: (context, hasData) => hasData
+                  ? FloatingActionButton.extended(
+                      onPressed: onAdd,
+                      icon: const Icon(Icons.add),
+                      label: const Text('Predloži pesmu'),
+                    )
+                  : const SizedBox.shrink(),
+            )
+          : const SizedBox.shrink(),
+    );
+  }
+}
+
+/// Donji bar tabova: prati izabrani tab.
+class _RoomNavBar extends StatelessWidget {
+  const _RoomNavBar({required this.tabs});
+
+  final TabController tabs;
+
+  @override
+  Widget build(BuildContext context) {
+    // Slusa se ANIMACIJA, ne kontroler: kontroler javlja samo promenu
+    // indexa (pocetak/kraj), pa bi oznaka skakala tek na kraju swipe-a.
+    // Animacija kuca na svaki frejm — i dok prst vuce, jer TabBarView tada
+    // pomera njenu vrednost preko offset-a. Zato oznaka prati prst.
+    final animation = tabs.animation;
+    return ListenableBuilder(
+      listenable: animation ?? tabs,
+      builder: (_, _) {
+        // `tabs.index` se menja tek na kraju — zaobljena vrednost animacije
+        // prati klizenje, pa se istaknuti tab menja dok prst jos klizi.
+        final selected = animation == null
+            ? tabs.index
+            : animation.value.round().clamp(0, RoomTab.values.length - 1);
+        return NavigationBar(
+          selectedIndex: selected,
+          onDestinationSelected: tabs.animateTo,
+          destinations: const [
+            NavigationDestination(
+              icon: Icon(Icons.search),
+              label: 'Pretraga',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.how_to_vote),
+              label: 'Glasaj',
+            ),
+            NavigationDestination(
+              icon: Icon(Icons.play_circle_outline),
+              label: 'Trenutno',
+            ),
+          ],
+        );
+      },
+    );
+  }
+}

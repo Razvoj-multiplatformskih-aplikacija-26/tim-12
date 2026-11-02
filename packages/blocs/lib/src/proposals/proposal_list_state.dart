@@ -42,19 +42,25 @@ final class ProposalsEmpty extends ProposalListState {
 /// tekst poruke bira aplikacija po tipu greske. `ProposalRuleError` nema
 /// `==`, pa se poredi po identitetu: isti prekrsaj dva puta zaredom daje
 /// novo stanje i ekran ponovo prikazuje poruku.
+///
+/// [lastAdded] je predlog dodat poslednjom uspesnom akcijom (inace null):
+/// po njemu tab Pretraga zna da je bas njegov predlog prosao, bez brojanja
+/// predloga pre i posle. Svaka sledeca akcija ga vraca na null.
 final class ProposalsLoaded extends ProposalListState {
   const ProposalsLoaded({
     required this.snapshot,
     required this.tally,
     this.ruleError,
+    this.lastAdded,
   });
 
   final RoomSnapshot snapshot;
   final Map<ProposalId, int> tally;
   final ProposalRuleError? ruleError;
+  final Proposal? lastAdded;
 
   @override
-  List<Object?> get props => [snapshot, tally, ruleError];
+  List<Object?> get props => [snapshot, tally, ruleError, lastAdded];
 }
 
 /// Tehnicka greska porta. Bez teksta (standard: poruku bira aplikacija) —

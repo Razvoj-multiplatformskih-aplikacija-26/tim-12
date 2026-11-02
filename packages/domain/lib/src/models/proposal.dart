@@ -5,7 +5,7 @@
 // Vreme predlaganja cuva se kao podatak; "sad" uvek stize kao parametar
 // pravila, nikad se ne cita sistemski sat.
 import 'ids.dart';
-import 'proposal_status.dart';
+import '../states/proposal_status.dart';
 import 'song.dart';
 
 final class Proposal {
