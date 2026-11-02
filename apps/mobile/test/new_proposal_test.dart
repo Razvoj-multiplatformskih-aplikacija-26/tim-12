@@ -48,9 +48,16 @@ Future<void> _type(WidgetTester tester, String title, String artist) async {
 final _recentlyPlayed = find.textContaining('je puštena u');
 
 void main() {
-  testWidgets('dugme na listi otvara formu na njenoj adresi', (tester) async {
+  testWidgets('dugme na listi vodi na Pretragu, rucni unos na formu', (
+    tester,
+  ) async {
     final router = await _start(tester, '/soba/r1');
     await tester.tap(find.text('Predloži pesmu'));
+    await tester.pumpAndSettle();
+    expect(_location(router), '/soba/r1');
+    expect(find.widgetWithText(TextField, 'Pretraži pesme'), findsOneWidget);
+
+    await tester.tap(find.text('ili unesi pesmu ručno'));
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1/novi');
     expect(_field('Naslov'), findsOneWidget);
@@ -117,13 +124,41 @@ void main() {
 
     await tester.pumpAndSettle();
     expect(_location(router), '/soba/r1');
-    await tester.scrollUntilVisible(find.text('Under Pressure'), 200);
+    // Nov predlog je predlozen: ceka u sklopljenoj sekciji na dnu liste —
+    // prvo skroluj do nje (lenjo montiranje), dovedi u sredinu jer tap
+    // na delimicno vidljiv red vara hit-test, pa rasklopi.
+    final waitingHeader = find.textContaining('Na čekanju');
+    await tester.scrollUntilVisible(
+      waitingHeader,
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.ensureVisible(waitingHeader);
+    await tester.pumpAndSettle();
+    await tester.tap(waitingHeader);
+    await tester.pumpAndSettle();
+    // Red dovedi u sredinu da tap sigurno pogodi (delimicno vidljiv red
+    // vara hit-test kroz donji bar).
     final tile = find.ancestor(
       of: find.text('Under Pressure'),
       matching: find.byType(ListTile),
     );
+    await tester.scrollUntilVisible(
+      tile,
+      200,
+      scrollable: find.descendant(
+        of: find.byType(ListView),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    await tester.ensureVisible(tile);
+    await tester.pumpAndSettle();
+    // Oznaka je ikonica bez teksta (znacenje u tooltip-u i na detalju).
     expect(
-      find.descendant(of: tile, matching: find.text('Tvoj predlog')),
+      find.descendant(of: tile, matching: find.byIcon(Icons.person)),
       findsOneWidget,
     );
 
@@ -135,17 +170,18 @@ void main() {
   testWidgets('treci aktivan predlog: forma posle toga prikazuje limit', (
     tester,
   ) async {
-    await _start(tester, '/soba/r1/novi');
+    final router = await _start(tester, '/soba/r1/novi');
     expect(find.textContaining('Dostignut je limit'), findsNothing);
 
     await _type(tester, 'Under Pressure', 'Queen');
     await tester.tap(_submit);
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Predloži pesmu'));
+    // Kvota popunjena: povratak na formu pokazuje limit.
+    router.go('/soba/r1/novi');
     await tester.pumpAndSettle();
-    expect(find.textContaining('Dostignut je limit'), findsOneWidget);
     await _type(tester, 'Hey Jude', 'The Beatles');
+    expect(find.textContaining('Dostignut je limit'), findsOneWidget);
     expect(_canSubmit(tester), isFalse);
   });
 

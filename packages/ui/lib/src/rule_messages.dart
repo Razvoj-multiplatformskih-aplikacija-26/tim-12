@@ -17,6 +17,10 @@ String ruleMessage(ProposalRuleError error) => switch (error) {
         'Ista pesma ne može ponovo u roku od sat vremena.',
   InvalidVoteTarget() => 'Za ovaj predlog se trenutno ne glasa.',
   AlreadyVotedInRound() => 'Tvoj glas u ovoj rundi je već zabeležen.',
+  ProposalNotRemovable() =>
+    'Ovaj predlog je već završen i ne može da se ukloni.',
+  RoomNotClosable() => 'Ova soba je već zatvorena.',
+  RoomNameEmpty() => 'Naziv sobe ne sme biti prazan.',
 };
 
 String _clockTime(DateTime at) =>

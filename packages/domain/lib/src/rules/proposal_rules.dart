@@ -81,6 +81,24 @@ final class AlreadyVotedInRound extends ProposalRuleError {
   final RoundId roundId;
 }
 
+/// Predlog je u terminalnom stanju — nema sta da se uklanja.
+/// Moderatorsko uklanjanje vazi samo za nezavrsene predloge.
+final class ProposalNotRemovable extends ProposalRuleError {
+  const ProposalNotRemovable({required this.proposalId});
+
+  final ProposalId proposalId;
+}
+
+/// Soba je vec zatvorena — zatvaranje vazi samo za otvorenu ili pauziranu.
+final class RoomNotClosable extends ProposalRuleError {
+  const RoomNotClosable();
+}
+
+/// Naziv sobe ne sme biti prazan (samo razmaci se racunaju kao prazno).
+final class RoomNameEmpty extends ProposalRuleError {
+  const RoomNameEmpty();
+}
+
 /// Najvise [limit] aktivnih predloga po slusaocu (odluka O6: aktivan =
 /// predlozena ili u glasanju). Proverava se PRE pravljenja novog predloga,
 /// zato prekrsaj nastaje vec kad broj dostigne limit.
@@ -129,6 +147,24 @@ RuleOutcome checkNotRecentlyPlayed({
 RuleOutcome checkVoteTarget({required Proposal proposal}) {
   if (proposal.status is! InVoting) {
     return RuleInvalid(InvalidVoteTarget(proposalId: proposal.id));
+  }
+  return const RuleValid();
+}
+
+/// Naziv sobe vazi samo kad nije prazan. Proverava se PRE pravljenja sobe,
+/// zato prekrsaj nastaje vec kad je unet samo razmak.
+RuleOutcome checkRoomName({required String name}) {
+  if (name.trim().isEmpty) {
+    return const RuleInvalid(RoomNameEmpty());
+  }
+  return const RuleValid();
+}
+
+/// Uklanjanje vazi samo za nezavrsen predlog: iz terminalnog stanja
+/// (pustena, odbijena, vec uklonjena) nema prelaza u `Removed`.
+RuleOutcome checkRemovable({required Proposal proposal}) {
+  if (!canTransition(proposal.status, const Removed())) {
+    return RuleInvalid(ProposalNotRemovable(proposalId: proposal.id));
   }
   return const RuleValid();
 }

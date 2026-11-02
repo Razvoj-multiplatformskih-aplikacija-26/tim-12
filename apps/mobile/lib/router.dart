@@ -1,15 +1,17 @@
 // Navigacija: svaki ekran ima svoju adresu (go_router).
 //
-//   /                          → preusmerava na demo sobu
-//   /soba/:roomId              → lista predloga sobe (glavni tok)
+//   /                          → preusmerava na /sobe
+//   /sobe                      → pocetna: Napravi sobu | Pridruzi se
+//   /soba/:roomId              → soba (tabovi: Pretraga | Glasaj | Trenutno)
 //   /soba/:roomId/predlog/:id  → detalj predloga
-//   /soba/:roomId/novi         → forma novog predloga
+//   /soba/:roomId/novi         → forma novog predloga (rucni unos)
 //
 // Soba je u adresi, pa Bloc pravi ShellRoute za sobu iz adrese: svi ekrani
 // jedne sobe dele isti Bloc (isti podaci, glas sa detalja vidi i lista).
 // Tu je i prikaz prekrsaja pravila (SnackBar), pa se poruka vidi na kom god
 // ekranu sobe je akcija pokrenuta.
 // Ruter zna samo za PORT — koja implementacija stize, odlucuje `main.dart`.
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -17,21 +19,30 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import 'data/demo_room.dart';
-import 'paths.dart';
 import 'ui/new_proposal_screen.dart';
 import 'ui/proposal_detail_screen.dart';
-import 'ui/proposal_list_screen.dart';
+import 'ui/room_shell.dart';
+import 'ui/rooms_screen.dart';
 
 GoRouter createRouter({
   required ProposalRepository repository,
   required UserId currentUser,
-  Map<RoomId, String> rooms = const {},
   VoidCallback? onSimulateError,
+  ValueListenable<ThemeMode>? themeMode,
+  VoidCallback? onToggleTheme,
 }) => GoRouter(
-  initialLocation: roomPath(demoRoomId),
+  initialLocation: '/sobe',
   routes: [
-    GoRoute(path: '/', redirect: (_, _) => roomPath(demoRoomId)),
+    GoRoute(path: '/', redirect: (_, _) => '/sobe'),
+    // Home: dve kartice (napravi / pridruzi se) nad istim Bloc-om.
+    GoRoute(
+      path: '/sobe',
+      builder: (_, _) => BlocProvider(
+        create: (_) => RoomsBloc(repository: repository, hostId: currentUser)
+          ..add(const RoomsRequested()),
+        child: const RoomsScreen(),
+      ),
+    ),
     ShellRoute(
       builder: (context, state, child) {
         final roomId = RoomId(state.pathParameters['roomId']!);
@@ -48,12 +59,14 @@ GoRouter createRouter({
       },
       routes: [
         GoRoute(
+          // Skoljka sobe: tabovi Pretraga | Glasaj | Trenutno (swipe + bar).
           path: '/soba/:roomId',
-          builder: (_, state) => ProposalListScreen(
+          builder: (_, state) => RoomShell(
             roomId: RoomId(state.pathParameters['roomId']!),
             currentUser: currentUser,
-            rooms: rooms,
             onSimulateError: onSimulateError,
+            themeMode: themeMode,
+            onToggleTheme: onToggleTheme,
           ),
           // Pod-rute: lista ostaje ispod forme i detalja, pa "nazad" radi sam.
           routes: [
@@ -112,8 +125,8 @@ class _NotFoundScreen extends StatelessWidget {
           const Text('Ova stranica ne postoji.'),
           const SizedBox(height: 16),
           FilledButton(
-            onPressed: () => context.go('/'),
-            child: const Text('Nazad na sobu'),
+            onPressed: () => context.go('/sobe'),
+            child: const Text('Nazad na sobe'),
           ),
         ],
       ),

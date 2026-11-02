@@ -12,6 +12,9 @@ final class Song {
     required this.artist,
     this.externalLink,
     this.durationMs,
+    this.coverUrl,
+    this.album,
+    this.platformLinks,
   });
 
   final String title;
@@ -23,6 +26,16 @@ final class Song {
   /// Trajanje u milisekundama, opciono — za progress bar u view modu.
   /// Van jednakosti kao i link: trajanje ne menja identitet pesme.
   final int? durationMs;
+
+  /// Cover pesme (URL). KT1: ima ga samo trenutna pesma; van jednakosti.
+  final String? coverUrl;
+
+  /// Album sa kog je pesma. Opciono; van jednakosti.
+  final String? album;
+
+  /// Linkovi ka platformama (Spotify, YouTube Music, ...). KT1: samo
+  /// trenutna pesma ih ima; kljucevi su nazivi platformi. Van jednakosti.
+  final Map<String, String>? platformLinks;
 
   /// Ista pesma: poredjenje bez velikih/malih slova i okolnih razmaka, da se
   /// pravilo ne bi zaobilazilo razmakom ("Fuego" vs " fuego ").

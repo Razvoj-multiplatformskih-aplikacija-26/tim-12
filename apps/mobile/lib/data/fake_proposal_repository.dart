@@ -90,6 +90,59 @@ final class FakeProposalRepository implements ProposalRepository {
   _RoomData _room(RoomId roomId) =>
       _rooms[roomId] ?? (throw Exception('Nepoznata soba: $roomId'));
 
+  @override
+  Future<List<Room>> loadRooms() async {
+    await _request();
+    return List.unmodifiable(_rooms.values.map((d) => d.room));
+  }
+
+  @override
+  Future<Proposal> removeProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) async {
+    await _request();
+    final data = _room(roomId);
+    final index = data.proposals.indexWhere((p) => p.id == proposalId);
+    if (index < 0) throw Exception('Nepoznat predlog: $proposalId');
+    final removed = data.proposals[index].withStatus(const Removed());
+    data.proposals[index] = removed;
+    return removed;
+  }
+
+  @override
+  Future<Room> closeRoom({required RoomId roomId}) async {
+    await _request();
+    final data = _room(roomId);
+    data.room = data.room.withStatus(const RoomClosed());
+    return data.room;
+  }
+
+  @override
+  Future<Room> createRoom({
+    required String name,
+    required UserId hostId,
+  }) async {
+    await _request();
+    final id = RoomId('r${_rooms.length + 1}');
+    final now = _clock();
+    final room = Room(id: id, name: name, hostId: hostId);
+    _rooms[id] = _RoomData(
+      RoomSnapshot(
+        room: room,
+        round: Round(
+          id: RoundId('rd-${id.value}'),
+          roomId: id,
+          startsAt: now.subtract(const Duration(minutes: 1)),
+          endsAt: now.add(const Duration(minutes: 9)),
+        ),
+        proposals: const [],
+        votes: const [],
+      ),
+    );
+    return room;
+  }
+
   /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska.
   Future<void> _request() async {
     await Future<void>.delayed(delay);
@@ -108,7 +161,7 @@ final class _RoomData {
       proposals = [...seed.proposals],
       votes = [...seed.votes];
 
-  final Room room;
+  Room room;
   final Round round;
   final List<Proposal> proposals;
   final List<Vote> votes;

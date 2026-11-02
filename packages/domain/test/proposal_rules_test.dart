@@ -215,4 +215,44 @@ void main() {
       }
     });
   });
+
+  group('checkRoomName', () {
+    test('naziv sa slovima vazi', () {
+      expect(checkRoomName(name: 'Petak').isValid, isTrue);
+    });
+
+    test('prazan naziv i sami razmaci ne vaze', () {
+      for (final name in ['', '   ']) {
+        final outcome = checkRoomName(name: name);
+        expect(outcome, isA<RuleInvalid>());
+        expect((outcome as RuleInvalid).error, isA<RoomNameEmpty>());
+      }
+    });
+  });
+
+  group('checkRemovable', () {    test('nezavrsen predlog sme da se ukloni', () {
+      for (final status in [
+        const Proposed(),
+        const InVoting(),
+        const Winner(),
+      ]) {
+        expect(
+          checkRemovable(proposal: _proposal(status: status)).isValid,
+          isTrue,
+        );
+      }
+    });
+
+    test('terminalan predlog ne sme da se ukloni', () {
+      for (final status in [
+        Played(DateTime.utc(2026, 10, 1, 19)),
+        const Rejected(),
+        const Removed(),
+      ]) {
+        final outcome = checkRemovable(proposal: _proposal(status: status));
+        expect(outcome, isA<RuleInvalid>());
+        expect((outcome as RuleInvalid).error, isA<ProposalNotRemovable>());
+      }
+    });
+  });
 }

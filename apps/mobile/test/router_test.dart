@@ -13,7 +13,6 @@ Future<GoRouter> _start(WidgetTester tester, String location) async {
   final router = createRouter(
     repository: FakeProposalRepository(delay: _delay),
     currentUser: demoUser,
-    rooms: demoRooms,
   )..go(location);
   await tester.pumpWidget(RadioRoomApp(router: router));
   await tester.pump();
@@ -25,10 +24,11 @@ String _location(GoRouter router) =>
     router.routerDelegate.currentConfiguration.uri.toString();
 
 void main() {
-  testWidgets('koren preusmerava na demo sobu', (tester) async {
+  testWidgets('koren preusmerava na sobe', (tester) async {
     final router = await _start(tester, '/');
-    expect(_location(router), '/soba/r1');
-    expect(find.text('Petak u Studentskom'), findsOneWidget);
+    expect(_location(router), '/sobe');
+    expect(find.text('Napravi sobu'), findsWidgets);
+    expect(find.text('Pridruži se'), findsOneWidget);
   });
 
   testWidgets('adresa sobe otvara listu te sobe', (tester) async {
@@ -41,15 +41,14 @@ void main() {
     expect(find.text('Pokušaj ponovo'), findsOneWidget);
   });
 
-  testWidgets('nepoznata adresa: poruka i povratak na sobu', (tester) async {
+  testWidgets('nepoznata adresa: poruka i povratak na sobe', (tester) async {
     final router = await _start(tester, '/nesto');
     expect(find.text('Ova stranica ne postoji.'), findsOneWidget);
 
-    await tester.tap(find.text('Nazad na sobu'));
+    await tester.tap(find.text('Nazad na sobe'));
     await tester.pump();
     await tester.pump(_delay);
-    expect(_location(router), '/soba/r1');
-    expect(find.text('Fuego'), findsOneWidget);
+    expect(_location(router), '/sobe');
   });
 
   testWidgets('prekrsaj pravila: SnackBar sa porukom za celu sobu', (
@@ -159,40 +158,85 @@ void main() {
     });
   });
 
-  testWidgets('meni: prelaz u praznu sobu, prvi predlog, pa nazad', (
+  testWidgets('meni: prekidac teme vrti svetla <-> tamna', (
     tester,
   ) async {
-    final router = await _start(tester, '/soba/r1');
-    await tester.tap(find.byType(PopupMenuButton<void>));
+    final themeMode = ValueNotifier(ThemeMode.system);
+    addTearDown(themeMode.dispose);
+    final router = createRouter(
+      repository: FakeProposalRepository(delay: _delay),
+      currentUser: demoUser,
+      themeMode: themeMode,
+      onToggleTheme: () => themeMode.value =
+          themeMode.value == ThemeMode.dark
+              ? ThemeMode.light
+              : ThemeMode.dark,
+    )..go('/soba/r1');
+    await tester.pumpWidget(RadioRoomApp(router: router, themeMode: themeMode));
+    await tester.pump();
+    await tester.pump(_delay);
     await tester.pumpAndSettle();
-    // Tekuca soba nije u meniju.
-    expect(find.text('Petak u Studentskom'), findsOneWidget); // samo naslov
+
+    Future<void> toggle() async {
+      await tester.tap(find.byType(PopupMenuButton<void>));
+      await tester.pumpAndSettle();
+    }
+
+    // Sa sistemske prvi klik vodi u tamnu (suprotna od podrazumevane).
+    await toggle();
+    await tester.tap(find.text('Tamna tema'));
+    await tester.pumpAndSettle();
+    expect(themeMode.value, ThemeMode.dark);
+
+    await toggle();
+    await tester.tap(find.text('Svetla tema'));
+    await tester.pumpAndSettle();
+    expect(themeMode.value, ThemeMode.light);
+  });
+
+  testWidgets('strelica nazad i sistemski back vode na sobe', (tester) async {    final router = await _start(tester, '/soba/r1');
+    expect(find.text('Petak u Studentskom'), findsOneWidget);
+
+    // Strelica u zajednickom AppBar-u (ista na sva tri taba).
+    await tester.tap(find.byIcon(Icons.arrow_back));
+    await tester.pumpAndSettle();
+    expect(_location(router), '/sobe');
+
+    // Sistemski back sa taba takodje vodi na sobe, ne iz aplikacije.
+    // (Ne preko pageBack: on trazi BackButton widget, a skoljkа ima svoju
+    // strelicu — simulira se sistemski dogadjaj.)
+    router.go('/soba/r1');
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+    expect(_location(router), '/sobe');
+  });
+
+  testWidgets('home: prelaz u praznu sobu kroz Pridruzi se, predlog iz pretrage', (
+    tester,
+  ) async {
+    await _start(tester, '/sobe');
+    await tester.tap(find.text('Pridruži se'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Prazna soba'));
     await tester.pumpAndSettle();
 
-    expect(_location(router), '/soba/r2');
     expect(find.text('Još nema predloga — budi prvi!'), findsOneWidget);
 
-    // Prvi predlog: prazan prikaz prelazi u podatke.
+    // FAB vodi na Pretragu (ne na formu); predlog iz stub kataloga.
     await tester.tap(find.text('Predloži pesmu'));
     await tester.pumpAndSettle();
-    await tester.enterText(find.widgetWithText(TextField, 'Naslov'), 'Fuego');
     await tester.enterText(
-      find.widgetWithText(TextField, 'Izvođač'),
-      'Eleni Foureira',
+      find.widgetWithText(TextField, 'Pretraži pesme'),
+      'pressure',
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
     await tester.tap(find.widgetWithText(FilledButton, 'Predloži'));
     await tester.pumpAndSettle();
-    expect(_location(router), '/soba/r2');
-    expect(find.text('Fuego'), findsOneWidget);
+    // Prihvatanje vodi nazad na Glasaj; novi ceka u sklopljenoj sekciji.
     expect(find.text('Još nema predloga — budi prvi!'), findsNothing);
-
-    await tester.tap(find.byType(PopupMenuButton<void>));
+    await tester.tap(find.textContaining('Na čekanju'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Petak u Studentskom').last);
-    await tester.pumpAndSettle();
-    expect(_location(router), '/soba/r1');
-    expect(find.text('Mr. Brightside'), findsOneWidget);
+    expect(find.text('Under Pressure'), findsOneWidget);
   });
 }

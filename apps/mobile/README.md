@@ -19,17 +19,21 @@ Platforme (Android, iOS, veb) već postoje — `flutter create` nije potreban i 
 
 | Adresa | Ekran |
 | --- | --- |
-| `/` | preusmerava na demo sobu `/soba/r1` |
-| `/soba/:roomId` | lista predloga sobe — glavni tok, 4 stanja |
+| `/` | preusmerava na `/sobe` |
+| `/sobe` | početna: **Napravi sobu** \| **Pridruži se** (lista soba + QR stub) |
+| `/soba/:roomId` | soba — tabovi **Pretraga** \| **Glasaj** \| **Trenutno** (swipe + donji bar) |
 | `/soba/:roomId/predlog/:id` | detalj predloga, glasanje |
-| `/soba/:roomId/novi` | forma novog predloga sa proverom pravila pri unosu |
+| `/soba/:roomId/novi` | forma novog predloga — ručni unos (sa dna Pretrage) |
 
-Nepoznata adresa prikazuje „Ova stranica ne postoji.“ sa povratkom na sobu.
+Nepoznata adresa prikazuje „Ova stranica ne postoji.“ sa povratkom na sobe.
+
+Tabovi sobe su stanje ekrana (jedna adresa); Glasaj je podrazumevani (sredina).
+Strelica nazad u vrhu sobe (i sistemski back) vode na `/sobe`.
 
 ## Gde šta živi
 
 - `lib/main.dart` — mesto sastavljanja: **jedino** mesto koje zna za lažni repozitorijum. Zamena porta (npr. klijent servera u KT2) menja samo ovaj fajl.
-- `lib/router.dart` — rute; `ShellRoute` pravi jedan `ProposalListBloc` po sobi, pa lista, detalj i forma dele iste podatke. Tu je i prikaz prekršaja pravila (SnackBar) za sve ekrane sobe.
+- `lib/router.dart` — rute; `ShellRoute` pravi jedan `ProposalListBloc` po sobi, pa tabovi, detalj i forma dele iste podatke. Tu je i prikaz prekršaja pravila (SnackBar) za sve ekrane sobe. Home (`/sobe`) ima svoj `RoomsBloc`.
 - `lib/ui/` — ekrani: samo šalju događaje Bloc-u i crtaju njegovo stanje.
 - `lib/data/` — lažni repozitorijum (kašnjenje 800 ms, okidač greške, dve sobe) i demo podaci.
 - Pravila su u `packages/domain`, poruke na srpskom u `packages/ui` (`ruleMessage`), tema i čip stanja takođe u `packages/ui`.
@@ -38,11 +42,11 @@ Pravilo se proverava na dva mesta, ali se piše na jednom: forma zove pravilo iz
 
 ## Demo podaci (`lib/data/demo_room.dart`)
 
-Dve sobe; prelaz između njih je u meniju ⋮ na listi.
+Dve demo sobe + lokalno napravljene; prelaz između njih je tab „Pridruži se“ na početnoj (`/sobe`). QR skeniranje stiže u KT2 (dugme pokazuje stub dijalog).
 
 **„Prazna soba“** (`/soba/r2`) — otvorena runda bez ijednog predloga, za prazan prikaz.
 
-**„Petak u Studentskom“** (`/soba/r1`, početna) — 12 predloga u svih 6 stanja. Vremena su relativna u odnosu na pokretanje, pa demo uvek radi isto:
+**„Petak u Studentskom“** (`/soba/r1`) — 12 predloga u svih 6 stanja. Vremena su relativna u odnosu na pokretanje, pa demo uvek radi isto:
 
 - tekući korisnik `u1` ima 2 aktivna predloga (Đurđevdan, Mesečina) — treći prolazi, četvrti ne;
 - „Bohemian Rhapsody“ (Queen) puštena je pre 20 min — ne može ponovo;
@@ -51,15 +55,16 @@ Dve sobe; prelaz između njih je u meniju ⋮ na listi.
 
 ## Demo tok za odbranu
 
-Ekran glavnog toka (lista) pokazuje sva 4 stanja: učitavanje (korak 1), podaci (1), prazan prikaz (6) i grešku sa „Pokušaj ponovo“ (7).
+Ekran glavnog toka (Glasaj tab) pokazuje sva 4 stanja: učitavanje (korak 1), podaci (1), prazan prikaz (6) i grešku sa „Pokušaj ponovo“ (7).
 
-1. **Učitavanje → podaci:** pokretanje prikazuje spinner (~800 ms), pa listu sa čipovima stanja i brojem glasova; oznaka „Tvoj predlog“ na Đurđevdanu i Mesečini.
+1. **Učitavanje → podaci:** `/sobe` → „Pridruži se“ → „Petak u Studentskom“ → spinner (~800 ms), pa Glasaj tab: skroz gore kartica sledeće pesme (ikonica pobednika), ispod lista glasanja sa rednim brojevima i brojem glasova; oznaka „Tvoj predlog“ pored naziva, crtica za „Na čekanju“. Swipe na Trenutno: veliki cover, izvođač + album, traka runde i dugmad ka platformama (KT1: samo „Bohemian Rhapsody“ ima cover i prave linkove — Spotify, YouTube Music, YouTube, Deezer).
 2. **Detalj:** dodir na red otvara `/soba/r1/predlog/<id>` (ko predlaže, vreme, glasovi; link ako ga pesma ima); strelica nazad vraća listu.
 3. **Akcija sa potvrdom:** „Glasaj“ na predlogu u glasanju → dijalog → broj glasova raste. Drugi glas → SnackBar „Tvoj glas u ovoj rundi je već zabeležen.“ (pravilo iz domena).
-4. **Forma, pravilo pri unosu:** „Predloži pesmu“ → upiši „Bohemian Rhapsody“ / „Queen“ → poruka ispod polja, dugme ugašeno. Isto i za „ bohemian rhapsody “ / „QUEEN“ (domen poredi normalizovano). „Kiša pada“ / „Partibrejkers“ prolazi.
-5. **Forma, slanje:** validna pesma (npr. „Under Pressure“ / „Queen“, sa linkom) → spinner na dugmetu → povratak na listu, nova pesma na kraju sa oznakom. Ponovo „Predloži pesmu“ → baner „Dostignut je limit aktivnih predloga (3/3)…“.
-6. **Prazan prikaz:** meni ⋮ → „Prazna soba“ → „Još nema predloga — budi prvi!“. Prvi predlog u njoj prebacuje ekran iz praznog prikaza u podatke. Meni ⋮ → „Petak u Studentskom“ vraća na prvu sobu (podaci su sačuvani).
+4. **Pretraga:** FAB „Predloži pesmu“ → Pretraga tab sa otvorenom tastaturom. Kucanje „queen“ pokazuje postojeće (Bohemian) i katalog bez duplikata (Under Pressure). „Predloži“ → povratak na Glasaj. Katalog pesma + pravilo: dva predloga prolaze, treći daje SnackBar limita (pravilo iz domena).
+5. **Forma, pravilo pri unosu:** dno Pretrage → „ili unesi pesmu ručno“ → `/novi`. „Bohemian Rhapsody“ / „Queen“ → poruka ispod polja, dugme ugašeno. Isto i za „ bohemian rhapsody “ / „QUEEN“ (domen poredi normalizovano). „Kiša pada“ / „Partibrejkers“ prolazi.
+6. **Prazan prikaz:** početna → „Pridruži se“ → „Prazna soba“ → „Još nema predloga — budi prvi!“. Predlog iz Pretrage prebacuje ekran iz praznog prikaza u podatke.
 7. **Greška i oporavak:** meni ⋮ → „Simuliraj grešku“ → sledeći zahtev (npr. glas) pada → ekran greške → „Pokušaj ponovo“ vraća podatke.
+8. **Napravi sobu:** početna → naziv → ulaz u novu praznu sobu. Prazan naziv → SnackBar „Naziv sobe ne sme biti prazan.“. QR dugme → stub dijalog („stiže u KT2“).
 
 ### Izmene uživo — gde se šta menja
 

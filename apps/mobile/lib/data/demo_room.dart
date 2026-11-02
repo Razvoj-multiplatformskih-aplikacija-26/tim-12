@@ -48,14 +48,16 @@ RoomSnapshot demoRoom(DateTime now) {
     String by,
     ProposalStatus status, {
     required int minutesAgo,
-  }) => Proposal(
-    id: ProposalId(id),
-    roomId: demoRoomId,
-    song: Song(title: title, artist: artist),
-    proposedBy: UserId(by),
-    proposedAt: ago(minutesAgo),
-    status: status,
-  );
+    Song? song,
+  }) =>
+      Proposal(
+        id: ProposalId(id),
+        roomId: demoRoomId,
+        song: song ?? Song(title: title, artist: artist),
+        proposedBy: UserId(by),
+        proposedAt: ago(minutesAgo),
+        status: status,
+      );
 
   final round = Round(
     id: const RoundId('rd2'),
@@ -139,6 +141,19 @@ RoomSnapshot demoRoom(DateTime now) {
         'u3',
         Played(ago(20)),
         minutesAgo: 30,
+        // KT1: jedina pesma sa coverom i pravim linkovima (sve provereno).
+        song: const Song(
+          title: 'Bohemian Rhapsody',
+          artist: 'Queen',
+          coverUrl: 'https://i.ytimg.com/vi/fJ9rUzIMcZQ/hqdefault.jpg',
+          album: 'A Night at the Opera (1975)',
+          platformLinks: {
+            'Spotify': 'https://open.spotify.com/track/6l8GvAyoUZwWDgF1e4822w',
+            'YouTube Music': 'https://music.youtube.com/watch?v=fJ9rUzIMcZQ',
+            'YouTube': 'https://www.youtube.com/watch?v=fJ9rUzIMcZQ',
+            'Deezer': 'https://www.deezer.com/track/4329888262',
+          },
+        ),
       ),
       proposal(
         'p9',
