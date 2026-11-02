@@ -5,7 +5,9 @@ build/
 .flutter-plugins-dependencies
 
 # IDE
-.idea/
+.idea/*
+!.idea/modules.xml
+!.idea/runConfigurations/
 .vscode/
 *.iml
 .run/
