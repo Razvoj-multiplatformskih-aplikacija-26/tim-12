@@ -112,6 +112,30 @@ final class FakeModerationRepository implements ProposalRepository {
   }) =>
       throw UnimplementedError('Backoffice ne glasa.');
 
+  @override
+  Future<Room> createRoom({
+    required String name,
+    required UserId hostId,
+  }) async {
+    await _request();
+    final id = RoomId('r${_rooms.length + 1}');
+    final now = _clock();
+    final room = Room(id: id, name: name, hostId: hostId);
+    _rooms.add(room);
+    _snapshots[id] = RoomSnapshot(
+      room: room,
+      round: Round(
+        id: RoundId('rd-${id.value}'),
+        roomId: id,
+        startsAt: now.subtract(const Duration(minutes: 1)),
+        endsAt: now.add(const Duration(minutes: 9)),
+      ),
+      proposals: const [],
+      votes: const [],
+    );
+    return room;
+  }
+
   /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska.
   Future<void> _request() async {
     await Future<void>.delayed(delay);
