@@ -102,10 +102,11 @@ class _RuleErrorListener extends StatelessWidget {
         listenWhen: (_, state) =>
             state is ProposalsLoaded && state.ruleError != null,
         listener: (context, state) {
-          final error = (state as ProposalsLoaded).ruleError!;
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          if (state case ProposalsLoaded(ruleError: final error?)) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          }
         },
         child: child,
       );

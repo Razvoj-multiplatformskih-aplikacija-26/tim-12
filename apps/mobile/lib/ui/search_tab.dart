@@ -49,7 +49,6 @@ class _SearchTabState extends State<SearchTab> {
   final _controller = TextEditingController();
   String _query = '';
   Song? _pending;
-  int? _countBefore;
 
   @override
   void dispose() {
@@ -62,19 +61,20 @@ class _SearchTabState extends State<SearchTab> {
     return BlocListener<ProposalListBloc, ProposalListState>(
       listenWhen: (_, state) => state is ProposalsLoaded && _pending != null,
       listener: (context, state) {
-        final loaded = state as ProposalsLoaded;
-        // Prekrsaj pravila: SnackBar je vec prikazan globalno, ostajemo.
-        if (loaded.ruleError != null) {
+        if (state case ProposalsLoaded(
+          :final ruleError,
+          :final lastAdded,
+        )) {
+          final pending = _pending;
           _pending = null;
-          _countBefore = null;
-          return;
-        }
-        // Uspeh: vise predloga nego pre slanja → nazad na glasanje.
-        if (_countBefore != null &&
-            loaded.snapshot.proposals.length > _countBefore!) {
-          _pending = null;
-          _countBefore = null;
-          widget.onAccepted();
+          // Prekrsaj pravila: SnackBar je vec prikazan globalno, ostajemo.
+          if (ruleError != null) return;
+          // Uspeh: dodat je bas predlog sa nasom pesmom → nazad na glasanje.
+          // Poredjenje je `Song.==` (normalizovano: velika/mala slova i
+          // razmaci ne smetaju), pa radi i kad server vrati drugaciji ID.
+          if (pending != null && lastAdded?.song == pending) {
+            widget.onAccepted();
+          }
         }
       },
       child: BlocBuilder<ProposalListBloc, ProposalListState>(
@@ -111,12 +111,6 @@ class _SearchTabState extends State<SearchTab> {
   }
 
   void _propose(BuildContext context, Song song) {
-    final state = context.read<ProposalListBloc>().state;
-    _countBefore = switch (state) {
-      ProposalsLoaded(:final snapshot) || ProposalsEmpty(:final snapshot) =>
-        snapshot.proposals.length,
-      _ => null,
-    };
     _pending = song;
     context.read<ProposalListBloc>().add(ProposalAdded(song));
   }

@@ -87,6 +87,9 @@ final class ProposalListBloc
             proposals: [...snapshot.proposals, proposal],
             votes: snapshot.votes,
           ),
+          // Eksplicitan znak uspeha: tab Pretraga prepoznaje bas ovaj
+          // predlog po pesmi, umesto da broji predloge pre i posle.
+          lastAdded: proposal,
         ),
       );
     } on Exception {
@@ -151,6 +154,7 @@ final class ProposalListBloc
   ProposalListState _stateFor(
     RoomSnapshot snapshot, {
     ProposalRuleError? ruleError,
+    Proposal? lastAdded,
   }) {
     if (snapshot.proposals.isEmpty) return ProposalsEmpty(snapshot);
     return ProposalsLoaded(
@@ -161,6 +165,7 @@ final class ProposalListBloc
         votes: snapshot.votes,
       ),
       ruleError: ruleError,
+      lastAdded: lastAdded,
     );
   }
 

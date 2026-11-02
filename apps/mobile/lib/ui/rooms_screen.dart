@@ -28,20 +28,22 @@ class _RoomsScreenState extends State<RoomsScreen> {
       listenWhen: (_, state) =>
           state is RoomsLoaded && state.rooms.length > _knownCount,
       listener: (context, state) {
-        final rooms = (state as RoomsLoaded).rooms;
-        if (_knownCount >= 0 && rooms.isNotEmpty) {
-          context.go('/soba/${rooms.last.id.value}');
+        if (state case RoomsLoaded(:final rooms)) {
+          if (_knownCount >= 0 && rooms.isNotEmpty) {
+            context.go('/soba/${rooms.last.id.value}');
+          }
+          _knownCount = rooms.length;
         }
-        _knownCount = rooms.length;
       },
       child: BlocListener<RoomsBloc, RoomsState>(
         listenWhen: (_, state) =>
             state is RoomsLoaded && state.ruleError != null,
         listener: (context, state) {
-          final error = (state as RoomsLoaded).ruleError!;
-          ScaffoldMessenger.of(context)
-            ..hideCurrentSnackBar()
-            ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          if (state case RoomsLoaded(ruleError: final error?)) {
+            ScaffoldMessenger.of(context)
+              ..hideCurrentSnackBar()
+              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
+          }
         },
         child: DefaultTabController(
           length: 2,

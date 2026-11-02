@@ -58,13 +58,15 @@ RoomSnapshot _snapshot({
       votes: votes,
     );
 
-ProposalsLoaded _loaded(RoomSnapshot snapshot) => ProposalsLoaded(
+ProposalsLoaded _loaded(RoomSnapshot snapshot, {Proposal? lastAdded}) =>
+    ProposalsLoaded(
       snapshot: snapshot,
       tally: voteTally(
         round: snapshot.round,
         proposals: snapshot.proposals,
         votes: snapshot.votes,
       ),
+      lastAdded: lastAdded,
     );
 
 Matcher _ruleError<T extends ProposalRuleError>() =>
@@ -276,6 +278,9 @@ void main() {
                   by: _user, song: newSong, status: const Proposed()),
             ],
           ),
+          // Eksplicitan znak uspeha za tab Pretraga.
+          lastAdded: _proposal('p9',
+              by: _user, song: newSong, status: const Proposed()),
         ),
       ],
     );

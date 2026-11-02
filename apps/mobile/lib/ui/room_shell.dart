@@ -56,6 +56,11 @@ class RoomShell extends StatefulWidget {
   State<RoomShell> createState() => _RoomShellState();
 }
 
+/// Kasnjenje fokusa posle prelaska na tab: polje pretrage se montira sa
+/// tabom, pa fokus stize tek nakon kraja animacije prelaska (~300ms).
+/// Bez kasnjenja zahtev ode u prazno i tastatura se ne otvori.
+const _focusAfterTabAnimation = Duration(milliseconds: 350);
+
 class _RoomShellState extends State<RoomShell>
     with SingleTickerProviderStateMixin {
   late final TabController _tabs;
@@ -83,7 +88,7 @@ class _RoomShellState extends State<RoomShell>
 
   void _goSearch() {
     _tabs.animateTo(RoomTab.search.index);
-    Future.delayed(const Duration(milliseconds: 350), () {
+    Future.delayed(_focusAfterTabAnimation, () {
       if (mounted) _searchFocus.requestFocus();
     });
   }

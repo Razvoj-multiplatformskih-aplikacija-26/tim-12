@@ -12,12 +12,15 @@
 // Izbor zivi u stanju ekrana (ne u adresi): suzavanje prozora i "nazad" sa
 // dubinske veze ne gube izbor — adresa je deljiva, izbor je lokalan.
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
-import 'package:radioroom_ui/radioroom_ui.dart';
+
+import 'moderation/keyboard_nav.dart';
+import 'moderation/detail_panel.dart';
+import 'moderation/room_layouts.dart';
+import 'moderation/status_filter.dart';
 
 /// Granica siri/uzak raspored: ispod je lista umesto tabele.
 const moderationWideBreakpoint = 900.0;
@@ -36,7 +39,7 @@ class ModerationScreen extends StatefulWidget {
 
 class _ModerationScreenState extends State<ModerationScreen> {
   ProposalId? _selectedId;
-  _StatusFilter _filter = _StatusFilter.all;
+  StatusFilter _filter = StatusFilter.all;
   bool _sortByVotes = false;
 
   @override
@@ -109,8 +112,8 @@ class _ModerationScreenState extends State<ModerationScreen> {
                   ],
                 ),
               ),
-            ModerationLoaded(:final rooms, :final snapshot) =>
-              _body(context, rooms, snapshot),
+            ModerationLoaded(:final rooms, :final snapshot, :final tally) =>
+              _body(context, rooms, snapshot, tally),
           },
         ),
       ),
@@ -121,6 +124,7 @@ class _ModerationScreenState extends State<ModerationScreen> {
     BuildContext context,
     List<Room> rooms,
     RoomSnapshot? snapshot,
+    Map<ProposalId, int> tally,
   ) {
     if (!rooms.any((r) => r.id == widget.roomId)) {
       return Center(
@@ -140,8 +144,7 @@ class _ModerationScreenState extends State<ModerationScreen> {
     if (snapshot == null || snapshot.room.id != widget.roomId) {
       return const Center(child: CircularProgressIndicator());
     }
-    final loaded = context.read<ModerationBloc>().state as ModerationLoaded;
-    final proposals = _visible(snapshot, loaded.tally);
+    final proposals = _visible(snapshot, tally);
     if (proposals.isEmpty) {
       return const Center(child: Text('Nema predloga za ovaj filter.'));
     }
@@ -149,7 +152,7 @@ class _ModerationScreenState extends State<ModerationScreen> {
     final selected = proposals.any((p) => p.id == _selectedId)
         ? _selectedId
         : proposals.first.id;
-    return _KeyboardNav(
+    return KeyboardNav(
       proposals: proposals,
       selectedId: selected,
       onSelect: _select,
@@ -163,7 +166,7 @@ class _ModerationScreenState extends State<ModerationScreen> {
       },
       child: Column(
         children: [
-          _FilterBar(
+          FilterBar(
             filter: _filter,
             sortByVotes: _sortByVotes,
             onFilter: (f) => setState(() => _filter = f),
@@ -173,9 +176,9 @@ class _ModerationScreenState extends State<ModerationScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) =>
                   constraints.maxWidth >= moderationWideBreakpoint
-                      ? _WideLayout(
+                      ? WideLayout(
                           proposals: proposals,
-                          tally: loaded.tally,
+                          tally: tally,
                           selectedId: selected!,
                           onSelect: _select,
                           onRemove: (id) =>
@@ -184,9 +187,9 @@ class _ModerationScreenState extends State<ModerationScreen> {
                           onCloseRoom: () =>
                               _confirmCloseRoom(context, snapshot.room),
                         )
-                      : _NarrowLayout(
+                      : NarrowLayout(
                           proposals: proposals,
-                          tally: loaded.tally,
+                          tally: tally,
                           selectedId: selected!,
                           onOpen: (id) {
                             final p = proposals.firstWhere(
@@ -197,9 +200,9 @@ class _ModerationScreenState extends State<ModerationScreen> {
                               context: context,
                               showDragHandle: true,
                               builder: (sheetContext) => SafeArea(
-                                child: _DetailPanel(
+                                child: DetailPanel(
                                   proposal: p,
-                                  votes: loaded.tally[id] ?? 0,
+                                  votes: tally[id] ?? 0,
                                   onRemove: () {
                                     Navigator.pop(sheetContext);
                                     _confirmRemoveProposal(context, id);
@@ -224,15 +227,12 @@ class _ModerationScreenState extends State<ModerationScreen> {
     );
   }
 
-  /// Filtrirana (+ opciono sortirana) lista za prikaz.
+  /// Filtrirana (+ opciono sortirana) lista za prikaz. Sort je domenski
+  /// poredak glasanja (`compareVotingOrder`, isti kao za pobednika).
   List<Proposal> _visible(RoomSnapshot snapshot, Map<ProposalId, int> tally) {
     final list = snapshot.proposals.where(_filter.matches).toList();
     if (_sortByVotes) {
-      list.sort((a, b) {
-        final byVotes = (tally[b.id] ?? 0).compareTo(tally[a.id] ?? 0);
-        if (byVotes != 0) return byVotes;
-        return a.proposedAt.compareTo(b.proposedAt);
-      });
+      list.sort((a, b) => compareVotingOrder(a, b, tally));
     }
     return list;
   }
@@ -300,338 +300,3 @@ class _ModerationScreenState extends State<ModerationScreen> {
   }
 }
 
-/// Filter predloga po stanju (minimum za moderaciju: odvoji aktivne od
-/// zavrsenih). Vrednost zivi u stanju ekrana — menja samo prikaz, ne podatke.
-enum _StatusFilter { all, active, finished }
-
-extension on _StatusFilter {
-  bool matches(Proposal p) => switch (this) {
-        _StatusFilter.all => true,
-        _StatusFilter.active => p.isActive,
-        _StatusFilter.finished => !p.isActive,
-      };
-
-  String get label => switch (this) {
-        _StatusFilter.all => 'Svi',
-        _StatusFilter.active => 'Aktivni',
-        _StatusFilter.finished => 'Završeni',
-      };
-}
-
-/// Traka filtera i sortiranja iznad liste: menja samo prikaz, ne podatke.
-class _FilterBar extends StatelessWidget {
-  const _FilterBar({
-    required this.filter,
-    required this.sortByVotes,
-    required this.onFilter,
-    required this.onSort,
-  });
-
-  final _StatusFilter filter;
-  final bool sortByVotes;
-  final ValueChanged<_StatusFilter> onFilter;
-  final VoidCallback onSort;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 4),
-      child: Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        crossAxisAlignment: WrapCrossAlignment.center,
-        children: [
-          SegmentedButton<_StatusFilter>(
-            segments: [
-              for (final f in _StatusFilter.values)
-                ButtonSegment(value: f, label: Text(f.label)),
-            ],
-            selected: {filter},
-            onSelectionChanged: (set) => onFilter(set.single),
-          ),
-          TextButton.icon(
-            onPressed: onSort,
-            icon: Icon(sortByVotes ? Icons.arrow_downward : Icons.sort),
-            label: const Text('Glasovi'),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// Tastatura ekrana: strelice selektuju, Delete uklanja, Esc izlazi.
-/// Omotac drzi `autofocus` da tasteri rade odmah po ulazu, bez klika misem.
-class _KeyboardNav extends StatelessWidget {
-  const _KeyboardNav({
-    required this.proposals,
-    required this.selectedId,
-    required this.onSelect,
-    required this.onRemove,
-    required this.onEscape,
-    required this.child,
-  });
-
-  final List<Proposal> proposals;
-  final ProposalId? selectedId;
-  final ValueChanged<ProposalId> onSelect;
-  final ValueChanged<ProposalId> onRemove;
-  final VoidCallback onEscape;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) {
-    return Shortcuts(
-      shortcuts: const {
-        SingleActivator(LogicalKeyboardKey.arrowDown): _MoveIntent(1),
-        SingleActivator(LogicalKeyboardKey.arrowUp): _MoveIntent(-1),
-        SingleActivator(LogicalKeyboardKey.delete): _RemoveIntent(),
-        // Mac: taster sa oznakom Delete salje Backspace.
-        SingleActivator(LogicalKeyboardKey.backspace): _RemoveIntent(),
-        SingleActivator(LogicalKeyboardKey.escape): _EscapeIntent(),
-      },
-      child: Actions(
-        actions: {
-          _MoveIntent: CallbackAction<_MoveIntent>(
-            onInvoke: (intent) => _move(intent.delta),
-          ),
-          _RemoveIntent: CallbackAction<_RemoveIntent>(
-            onInvoke: (_) {
-              final id = selectedId;
-              if (id != null) onRemove(id);
-              return null;
-            },
-          ),
-          _EscapeIntent: CallbackAction<_EscapeIntent>(
-            onInvoke: (_) {
-              onEscape();
-              return null;
-            },
-          ),
-        },
-        child: Focus(autofocus: true, child: child),
-      ),
-    );
-  }
-
-  void _move(int delta) {
-    if (proposals.isEmpty) return;
-    final current = proposals.indexWhere((p) => p.id == selectedId);
-    final next = (current < 0 ? 0 : (current + delta + proposals.length)) %
-        proposals.length;
-    onSelect(proposals[next].id);
-  }
-}
-
-class _MoveIntent extends Intent {
-  const _MoveIntent(this.delta);
-
-  final int delta;
-}
-
-class _RemoveIntent extends Intent {
-  const _RemoveIntent();
-}
-
-class _EscapeIntent extends Intent {
-  const _EscapeIntent();
-}
-
-/// Siri raspored: tabela levo, detalj u bocnom panelu desno.
-class _WideLayout extends StatelessWidget {
-  const _WideLayout({
-    required this.proposals,
-    required this.tally,
-    required this.selectedId,
-    required this.onSelect,
-    required this.onRemove,
-    required this.room,
-    required this.onCloseRoom,
-  });
-
-  final List<Proposal> proposals;
-  final Map<ProposalId, int> tally;
-  final ProposalId selectedId;
-  final ValueChanged<ProposalId> onSelect;
-  final ValueChanged<ProposalId> onRemove;
-  final Room room;
-  final VoidCallback onCloseRoom;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = proposals.firstWhere((p) => p.id == selectedId);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: _ProposalTable(
-              proposals: proposals,
-              tally: tally,
-              selectedId: selectedId,
-              onSelect: onSelect,
-              onRemove: onRemove,
-            ),
-          ),
-        ),
-        SizedBox(
-          width: 360,
-          child: _DetailPanel(
-            proposal: selected,
-            votes: tally[selectedId] ?? 0,
-            onRemove: () => onRemove(selectedId),
-            room: room,
-            onCloseRoom: onCloseRoom,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-/// Uzak raspored: lista umesto tabele; tap obelezi red i otvori detalj u
-/// donjem sheet-u sa istim akcijama kao bocni panel (nema navigacije —
-/// adresa ostaje na sobi, izbor zivi u stanju ekrana). Tastatura i dalje
-/// samo pomera izbor, bez sheet-a; "nazad" se vraca bez gubitka izbora.
-class _NarrowLayout extends StatelessWidget {
-  const _NarrowLayout({
-    required this.proposals,
-    required this.tally,
-    required this.selectedId,
-    required this.onOpen,
-  });
-
-  final List<Proposal> proposals;
-  final Map<ProposalId, int> tally;
-  final ProposalId selectedId;
-
-  /// Tap na red: obelezi + otvori detalj (roditelj pokazuje sheet).
-  final ValueChanged<ProposalId> onOpen;
-
-  @override
-  Widget build(BuildContext context) {
-    return ListView.builder(
-      itemCount: proposals.length,
-      itemBuilder: (context, index) {
-        final p = proposals[index];
-        return ListTile(
-          selected: p.id == selectedId,
-          selectedTileColor:
-              Theme.of(context).colorScheme.secondaryContainer,
-          title: Text(p.song.title),
-          subtitle: Text(p.song.artist),
-          trailing: Text('${tally[p.id] ?? 0}'),
-          onTap: () => onOpen(p.id),
-        );
-      },
-    );
-  }
-}
-
-class _ProposalTable extends StatelessWidget {
-  const _ProposalTable({
-    required this.proposals,
-    required this.tally,
-    required this.selectedId,
-    required this.onSelect,
-    required this.onRemove,
-  });
-
-  final List<Proposal> proposals;
-  final Map<ProposalId, int> tally;
-  final ProposalId selectedId;
-  final ValueChanged<ProposalId> onSelect;
-  final ValueChanged<ProposalId> onRemove;
-
-  @override
-  Widget build(BuildContext context) {
-    return DataTable(
-      showCheckboxColumn: false,
-      columns: const [
-        DataColumn(label: Text('Pesma')),
-        DataColumn(label: Text('Izvođač')),
-        DataColumn(label: Text('Predložio')),
-        DataColumn(label: Text('Stanje')),
-        DataColumn(label: Text('Glasovi'), numeric: true),
-        DataColumn(label: Text('Akcija')),
-      ],
-      rows: [
-        for (final p in proposals)
-          DataRow(
-            selected: p.id == selectedId,
-            onSelectChanged: (_) => onSelect(p.id),
-            cells: [
-              DataCell(Text(p.song.title)),
-              DataCell(Text(p.song.artist)),
-              DataCell(Text(p.proposedBy.value)),
-              DataCell(ProposalStatusChip(p.status)),
-              DataCell(Text('${tally[p.id] ?? 0}')),
-              DataCell(
-                canTransition(p.status, const Removed())
-                    ? TextButton(
-                        onPressed: () => onRemove(p.id),
-                        child: const Text('Ukloni'),
-                      )
-                    : const Text('—'),
-              ),
-            ],
-          ),
-      ],
-    );
-  }
-}
-
-/// Bocni detalj izabranog predloga + akcija zatvaranja sobe.
-class _DetailPanel extends StatelessWidget {
-  const _DetailPanel({
-    required this.proposal,
-    required this.votes,
-    required this.onRemove,
-    required this.room,
-    required this.onCloseRoom,
-  });
-
-  final Proposal proposal;
-  final int votes;
-  final VoidCallback onRemove;
-  final Room room;
-  final VoidCallback onCloseRoom;
-
-  @override
-  Widget build(BuildContext context) {
-    final removable = canTransition(proposal.status, const Removed());
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          shrinkWrap: true,
-          children: [
-            Text(
-              proposal.song.title,
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-            const SizedBox(height: 4),
-            Text(proposal.song.artist),
-            const SizedBox(height: 12),
-            ProposalStatusChip(proposal.status),
-            const SizedBox(height: 12),
-            Text('Predložio: ${proposal.proposedBy.value}'),
-            Text('Glasovi: $votes'),
-            const SizedBox(height: 16),
-            FilledButton(
-              onPressed: removable ? onRemove : null,
-              child: const Text('Ukloni predlog (Delete)'),
-            ),
-            const SizedBox(height: 8),
-            OutlinedButton(
-              onPressed: room.status is RoomClosed ? null : onCloseRoom,
-              child: const Text('Zatvori sobu'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
