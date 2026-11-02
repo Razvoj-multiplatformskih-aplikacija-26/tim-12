@@ -4,8 +4,8 @@
 // KT1: cista projekcija nad listom predloga, bez I/O. Isto pravilo nasledjuju
 // server (KT2) i host offline (KT3): "trenutna" je poslednja pustena pesma
 // cije je vreme pustanja proslo.
-import 'proposal.dart';
-import 'proposal_status.dart';
+import 'models/proposal.dart';
+import 'states/proposal_status.dart';
 
 /// Trenutno pustena pesma: poslednji predlog sa statusom `Played` cije je
 /// vreme pustanja stiglo (buducnost se ignorise — granica se ne veruje).

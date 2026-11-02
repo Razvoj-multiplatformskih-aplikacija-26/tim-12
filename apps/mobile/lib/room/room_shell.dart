@@ -12,9 +12,9 @@ import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
-import 'now_tab.dart';
-import 'proposal_list_screen.dart';
-import 'search_tab.dart';
+import 'tabs/now_tab.dart';
+import 'tabs/proposal_list_screen.dart';
+import 'tabs/search_tab.dart';
 
 /// Redosled tabova; sredina je podrazumevana (glasanje je primarna radnja).
 enum RoomTab { search, vote, now }

@@ -5,11 +5,11 @@
 // se odbacuje. U KT1 ovo su cista izracunavanja nad listama (konacnu odluku
 // donosi server tek u KT2) — zato zive u odvojenom fajlu od form-pravila:
 // granica buduce selidbe na server vidi se golim okom.
-import '../ids.dart';
-import '../proposal.dart';
-import '../proposal_status.dart';
-import '../round.dart';
-import '../vote.dart';
+import '../models/ids.dart';
+import '../models/proposal.dart';
+import '../states/proposal_status.dart';
+import '../models/round.dart';
+import '../models/vote.dart';
 
 /// Ishod razresenja runde: pobednik ili runde bez pobednika.
 sealed class RoundOutcome {

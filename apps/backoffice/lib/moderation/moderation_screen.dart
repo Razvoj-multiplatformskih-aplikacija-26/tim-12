@@ -17,10 +17,10 @@ import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
-import 'moderation/keyboard_nav.dart';
-import 'moderation/detail_panel.dart';
-import 'moderation/room_layouts.dart';
-import 'moderation/status_filter.dart';
+import 'keyboard_nav.dart';
+import 'detail_panel.dart';
+import 'room_layouts.dart';
+import 'status_filter.dart';
 
 /// Granica siri/uzak raspored: ispod je lista umesto tabele.
 const moderationWideBreakpoint = 900.0;

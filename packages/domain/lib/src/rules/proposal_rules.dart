@@ -7,11 +7,11 @@
 //
 // Sva vremena stizu kao parametri ("sad" se prosledjuje): pravila ne citaju
 // sistemski sat pa su deterministicki testabilna.
-import '../ids.dart';
-import '../proposal.dart';
-import '../proposal_status.dart';
-import '../song.dart';
-import '../vote.dart';
+import '../models/ids.dart';
+import '../models/proposal.dart';
+import '../states/proposal_status.dart';
+import '../models/song.dart';
+import '../models/vote.dart';
 
 /// Ishod provere pravila: ili vazi, ili nosi tacan razlog.
 sealed class RuleOutcome {

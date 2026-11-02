@@ -3,7 +3,7 @@
 // Stanja sobe (`RoomStatus`) stigla su sa backoffice celinom: predlozi nose
 // muzicki tok, soba nosi zivotni ciklus (otvorena/pauzirana/zatvorena).
 import 'ids.dart';
-import 'room_status.dart';
+import '../states/room_status.dart';
 
 final class Room {
   const Room({

@@ -9,7 +9,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_mobile/data/demo_room.dart';
-import 'package:radioroom_mobile/ui/room_shell.dart';
+import 'package:radioroom_mobile/room/room_shell.dart';
 
 const _delay = Duration(milliseconds: 100);
 final _now = DateTime(2026, 10, 31, 20);

@@ -12,9 +12,9 @@ import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
-import '../paths.dart';
-import 'proposal_labels.dart';
-import 'vote_confirmation.dart';
+import '../../paths.dart';
+import '../shared/proposal_labels.dart';
+import '../shared/vote_confirmation.dart';
 
 /// Stub katalog za KT1 (bez servera i Spotify API-ja): par pesama kojih
 /// nema u demou. Pravila se iz pretrage pokazuju kvotom aktivnih predloga.

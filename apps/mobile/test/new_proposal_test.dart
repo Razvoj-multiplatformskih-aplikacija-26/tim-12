@@ -13,7 +13,7 @@ import 'package:radioroom_mobile/data/demo_room.dart';
 import 'package:radioroom_mobile/data/fake_proposal_repository.dart';
 import 'package:radioroom_mobile/main.dart';
 import 'package:radioroom_mobile/router.dart';
-import 'package:radioroom_mobile/ui/new_proposal_screen.dart';
+import 'package:radioroom_mobile/room/proposal/new_proposal_screen.dart';
 
 const _delay = Duration(milliseconds: 10);
 

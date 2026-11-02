@@ -15,8 +15,8 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import 'ui/moderation_screen.dart';
-import 'ui/rooms_screen.dart';
+import 'moderation/moderation_screen.dart';
+import 'rooms/rooms_screen.dart';
 
 GoRouter createRouter({
   required ProposalRepository repository,

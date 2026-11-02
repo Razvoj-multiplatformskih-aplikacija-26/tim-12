@@ -10,10 +10,10 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import '../paths.dart';
-import 'proposal_labels.dart';
-import 'room_error_view.dart';
-import 'vote_confirmation.dart';
+import '../../paths.dart';
+import '../shared/proposal_labels.dart';
+import '../shared/room_error_view.dart';
+import '../shared/vote_confirmation.dart';
 
 class ProposalDetailScreen extends StatelessWidget {
   const ProposalDetailScreen({

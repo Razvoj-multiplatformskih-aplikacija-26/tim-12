@@ -3,15 +3,15 @@
 // Ovde zive modeli (predlog pesme, soba, ...), stanja i pravila.
 library;
 
-export 'src/ids.dart';
+export 'src/models/ids.dart';
 export 'src/playback.dart';
-export 'src/proposal.dart';
-export 'src/proposal_status.dart';
-export 'src/room.dart';
-export 'src/room_status.dart';
-export 'src/round.dart';
+export 'src/models/proposal.dart';
+export 'src/states/proposal_status.dart';
+export 'src/models/room.dart';
+export 'src/states/room_status.dart';
+export 'src/models/round.dart';
 export 'src/rules/proposal_rules.dart';
 export 'src/rules/round_resolution.dart';
-export 'src/song.dart';
-export 'src/user.dart';
-export 'src/vote.dart';
+export 'src/models/song.dart';
+export 'src/models/user.dart';
+export 'src/models/vote.dart';

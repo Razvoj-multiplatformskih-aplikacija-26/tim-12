@@ -10,7 +10,7 @@ import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-import 'room_error_view.dart';
+import '../shared/room_error_view.dart';
 
 class NowTab extends StatelessWidget {
   const NowTab({super.key});
