@@ -5,6 +5,7 @@
 // ekrana sobe, ne adrese: pod-rute (`novi`, `predlog/:id`) ostaju ispod,
 // pa "nazad" sa njih vraca na ovu skoljkU. Deljeni Bloc i SnackBar za
 // `ruleError` zive na nivou sobe kao pre (obrazac iz stash MVP-a).
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -18,17 +19,38 @@ import 'search_tab.dart';
 /// Redosled tabova; sredina je podrazumevana (glasanje je primarna radnja).
 enum RoomTab { search, vote, now }
 
+/// Podrazumevani rezim kad prekidac nije dat (sistemska tema, bez menija).
+final _systemThemeMode = ValueNotifier(ThemeMode.system);
+
+/// Labela suprotnog rezima: iz tamne u svetlu i obrnuto (sistemska se
+/// tretira kao svetla).
+String _themeLabel(ThemeMode mode) =>
+    mode == ThemeMode.dark ? 'Svetla tema' : 'Tamna tema';
+
+/// Ikonica suprotnog rezima.
+IconData _themeIcon(ThemeMode mode) => mode == ThemeMode.dark
+    ? Icons.light_mode_outlined
+    : Icons.dark_mode_outlined;
+
 class RoomShell extends StatefulWidget {
   const RoomShell({
     super.key,
     required this.roomId,
     required this.currentUser,
     this.onSimulateError,
+    this.themeMode,
+    this.onToggleTheme,
   });
 
   final RoomId roomId;
   final UserId currentUser;
   final VoidCallback? onSimulateError;
+
+  /// Tekuci rezim teme (za labelu stavke) i prekidac na sledeci.
+  /// Bez prekidaca stavke teme nema — meni tad ima samo gresku (ili ga
+  /// uopste nema bez okidaca).
+  final ValueListenable<ThemeMode>? themeMode;
+  final VoidCallback? onToggleTheme;
 
   @override
   State<RoomShell> createState() => _RoomShellState();
@@ -94,19 +116,33 @@ class _RoomShellState extends State<RoomShell>
               builder: (_, title) => Text(title),
             ),
             actions: [
-              // Okidac greske za probu porta; bez njega menija nema, pa
-              // zamena implementacije porta ne menja ovaj ekran.
-              if (widget.onSimulateError != null)
-                PopupMenuButton<void>(
-                  itemBuilder: (_) => [
-                    PopupMenuItem(
-                      onTap: widget.onSimulateError,
-                      child: const ListTile(
-                        leading: Icon(Icons.error_outline),
-                        title: Text('Simuliraj grešku'),
-                      ),
-                    ),
-                  ],
+              // Meni postoji kad ima bar jedna stavka: tema uvek (ako je
+              // dat prekidac), okidac greske samo uz dati okidac.
+              if (widget.onToggleTheme != null ||
+                  widget.onSimulateError != null)
+                ValueListenableBuilder(
+                  valueListenable:
+                      widget.themeMode ?? _systemThemeMode,
+                  builder: (_, mode, _) => PopupMenuButton<void>(
+                    itemBuilder: (_) => [
+                      if (widget.onToggleTheme != null)
+                        PopupMenuItem(
+                          onTap: widget.onToggleTheme,
+                          child: ListTile(
+                            leading: Icon(_themeIcon(mode)),
+                            title: Text(_themeLabel(mode)),
+                          ),
+                        ),
+                      if (widget.onSimulateError != null)
+                        PopupMenuItem(
+                          onTap: widget.onSimulateError,
+                          child: const ListTile(
+                            leading: Icon(Icons.error_outline),
+                            title: Text('Simuliraj grešku'),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
             ],
           ),

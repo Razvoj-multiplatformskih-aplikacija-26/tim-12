@@ -158,8 +158,43 @@ void main() {
     });
   });
 
-  testWidgets('strelica nazad i sistemski back vode na sobe', (tester) async {
-    final router = await _start(tester, '/soba/r1');
+  testWidgets('meni: prekidac teme vrti svetla <-> tamna', (
+    tester,
+  ) async {
+    final themeMode = ValueNotifier(ThemeMode.system);
+    addTearDown(themeMode.dispose);
+    final router = createRouter(
+      repository: FakeProposalRepository(delay: _delay),
+      currentUser: demoUser,
+      themeMode: themeMode,
+      onToggleTheme: () => themeMode.value =
+          themeMode.value == ThemeMode.dark
+              ? ThemeMode.light
+              : ThemeMode.dark,
+    )..go('/soba/r1');
+    await tester.pumpWidget(RadioRoomApp(router: router, themeMode: themeMode));
+    await tester.pump();
+    await tester.pump(_delay);
+    await tester.pumpAndSettle();
+
+    Future<void> toggle() async {
+      await tester.tap(find.byType(PopupMenuButton<void>));
+      await tester.pumpAndSettle();
+    }
+
+    // Sa sistemske prvi klik vodi u tamnu (suprotna od podrazumevane).
+    await toggle();
+    await tester.tap(find.text('Tamna tema'));
+    await tester.pumpAndSettle();
+    expect(themeMode.value, ThemeMode.dark);
+
+    await toggle();
+    await tester.tap(find.text('Svetla tema'));
+    await tester.pumpAndSettle();
+    expect(themeMode.value, ThemeMode.light);
+  });
+
+  testWidgets('strelica nazad i sistemski back vode na sobe', (tester) async {    final router = await _start(tester, '/soba/r1');
     expect(find.text('Petak u Studentskom'), findsOneWidget);
 
     // Strelica u zajednickom AppBar-u (ista na sva tri taba).

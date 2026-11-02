@@ -11,6 +11,7 @@
 // Tu je i prikaz prekrsaja pravila (SnackBar), pa se poruka vidi na kom god
 // ekranu sobe je akcija pokrenuta.
 // Ruter zna samo za PORT — koja implementacija stize, odlucuje `main.dart`.
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -27,6 +28,8 @@ GoRouter createRouter({
   required ProposalRepository repository,
   required UserId currentUser,
   VoidCallback? onSimulateError,
+  ValueListenable<ThemeMode>? themeMode,
+  VoidCallback? onToggleTheme,
 }) => GoRouter(
   initialLocation: '/sobe',
   routes: [
@@ -62,6 +65,8 @@ GoRouter createRouter({
             roomId: RoomId(state.pathParameters['roomId']!),
             currentUser: currentUser,
             onSimulateError: onSimulateError,
+            themeMode: themeMode,
+            onToggleTheme: onToggleTheme,
           ),
           // Pod-rute: lista ostaje ispod forme i detalja, pa "nazad" radi sam.
           routes: [
