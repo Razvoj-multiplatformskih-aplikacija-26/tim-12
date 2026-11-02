@@ -6,6 +6,9 @@
 //   Delete — ukloni izabrani predlog (uz dijalog potvrde)
 //   Esc — ponisti izbor (ili nazad na sobe kad nista nije izabrano)
 //
+// Napomena za Mac: taster koji na Mac tastaturi pise Delete Flutter vidi
+// kao Backspace (Delete je tek Fn+taj taster) — zato brisanje slusa oba.
+//
 // Izbor zivi u stanju ekrana (ne u adresi): suzavanje prozora i "nazad" sa
 // dubinske veze ne gube izbor — adresa je deljiva, izbor je lokalan.
 import 'package:flutter/material.dart';
@@ -185,7 +188,34 @@ class _ModerationScreenState extends State<ModerationScreen> {
                           proposals: proposals,
                           tally: loaded.tally,
                           selectedId: selected!,
-                          onSelect: _select,
+                          onOpen: (id) {
+                            final p = proposals.firstWhere(
+                              (e) => e.id == id,
+                            );
+                            setState(() => _selectedId = id);
+                            showModalBottomSheet<void>(
+                              context: context,
+                              showDragHandle: true,
+                              builder: (sheetContext) => SafeArea(
+                                child: _DetailPanel(
+                                  proposal: p,
+                                  votes: loaded.tally[id] ?? 0,
+                                  onRemove: () {
+                                    Navigator.pop(sheetContext);
+                                    _confirmRemoveProposal(context, id);
+                                  },
+                                  room: snapshot.room,
+                                  onCloseRoom: () {
+                                    Navigator.pop(sheetContext);
+                                    _confirmCloseRoom(
+                                      context,
+                                      snapshot.room,
+                                    );
+                                  },
+                                ),
+                              ),
+                            );
+                          },
                         ),
             ),
           ),
@@ -356,6 +386,8 @@ class _KeyboardNav extends StatelessWidget {
         SingleActivator(LogicalKeyboardKey.arrowDown): _MoveIntent(1),
         SingleActivator(LogicalKeyboardKey.arrowUp): _MoveIntent(-1),
         SingleActivator(LogicalKeyboardKey.delete): _RemoveIntent(),
+        // Mac: taster sa oznakom Delete salje Backspace.
+        SingleActivator(LogicalKeyboardKey.backspace): _RemoveIntent(),
         SingleActivator(LogicalKeyboardKey.escape): _EscapeIntent(),
       },
       child: Actions(
@@ -458,20 +490,24 @@ class _WideLayout extends StatelessWidget {
   }
 }
 
-/// Uzak raspored: lista umesto tabele; tap vodi na dubinsku vezu detalja,
-/// a "nazad" se vraca bez gubitka izbora (izbor zivi u stanju ekrana).
+/// Uzak raspored: lista umesto tabele; tap obelezi red i otvori detalj u
+/// donjem sheet-u sa istim akcijama kao bocni panel (nema navigacije —
+/// adresa ostaje na sobi, izbor zivi u stanju ekrana). Tastatura i dalje
+/// samo pomera izbor, bez sheet-a; "nazad" se vraca bez gubitka izbora.
 class _NarrowLayout extends StatelessWidget {
   const _NarrowLayout({
     required this.proposals,
     required this.tally,
     required this.selectedId,
-    required this.onSelect,
+    required this.onOpen,
   });
 
   final List<Proposal> proposals;
   final Map<ProposalId, int> tally;
   final ProposalId selectedId;
-  final ValueChanged<ProposalId> onSelect;
+
+  /// Tap na red: obelezi + otvori detalj (roditelj pokazuje sheet).
+  final ValueChanged<ProposalId> onOpen;
 
   @override
   Widget build(BuildContext context) {
@@ -486,7 +522,7 @@ class _NarrowLayout extends StatelessWidget {
           title: Text(p.song.title),
           subtitle: Text(p.song.artist),
           trailing: Text('${tally[p.id] ?? 0}'),
-          onTap: () => onSelect(p.id),
+          onTap: () => onOpen(p.id),
         );
       },
     );

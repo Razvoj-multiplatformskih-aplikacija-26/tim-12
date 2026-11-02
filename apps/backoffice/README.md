@@ -33,13 +33,16 @@ tehnička greška je ekran sa **Pokušaj ponovo**. Stavka menija
 
 | Taster | Efekat |
 |---|---|
-| `↑` / `↓` | pomeri izbor kroz redove |
-| `Delete` | ukloni izabrani predlog (uz dijalog) |
+| `↑` / `↓` | pomeri izbor kroz redove (i kroz sobe na `/sobe`) |
+| `Enter` | otvori izabranu sobu (na listi soba) |
+| `Delete` | ukloni izabrani predlog (uz dijalog) — radi i taster sa oznakom Delete na Mac tastaturi (Flutter ga vidi kao Backspace) |
 | `Esc` | poništi izbor (ili nazad na sobe) |
 
 Fokus je uvek vidljiv: izabrani red je označen, tasteri rade odmah po ulazu.
 
 ## Raspored
 
-Ispod 900px širine tabela postaje lista, bez gubitka izbora. Filter
-(Svi/Aktivni/Završeni) i sort po glasovima menjaju samo prikaz, ne podatke.
+Ispod 900px širine tabela postaje lista, bez gubitka izbora. Tap na red
+otvara detalj u donjem sheet-u sa istim akcijama kao bočni panel (tastatura
+u uskom prikazu samo pomera izbor). Filter (Svi/Aktivni/Završeni) i sort
+po glasovima menjaju samo prikaz, ne podatke.

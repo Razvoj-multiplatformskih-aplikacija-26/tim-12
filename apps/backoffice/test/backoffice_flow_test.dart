@@ -94,4 +94,64 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('Backspace (Mac Delete) takodje otvara dijalog', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petak u Studentskom'));
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.backspace);
+    await tester.pump();
+    expect(find.text('Ukloni predlog?'), findsOneWidget);
+
+    // Otkazi: nista nije uklonjeno.
+    await tester.tap(find.widgetWithText(TextButton, 'Otkaži'));
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextButton, 'Ukloni'), findsNWidgets(5));
+  });
+
+  testWidgets('lista soba: strelica bira, Enter otvara', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    // Druga soba (pauzirana): tabela sa njena 2 predloga.
+    expect(find.byType(DataTable), findsOneWidget);
+    expect(find.text('Mesečina'), findsNWidgets(2));
+  });
+
+  testWidgets('uzi prozor: tap otvara detalj sa akcijama', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petak u Studentskom'));
+    await tester.pumpAndSettle();
+
+    tester.view.physicalSize = const Size(400, 800);
+    await tester.pumpAndSettle();
+    expect(find.byType(DataTable), findsNothing);
+
+    await tester.tap(find.text('Fuego'));
+    await tester.pumpAndSettle();
+    // Donji sheet nosi iste akcije kao bocni panel.
+    expect(find.text('Ukloni predlog (Delete)'), findsOneWidget);
+
+    await tester.tap(find.text('Ukloni predlog (Delete)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ukloni predlog?'), findsOneWidget);
+  });
 }
