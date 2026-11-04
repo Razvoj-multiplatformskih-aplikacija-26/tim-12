@@ -44,9 +44,12 @@ class ProposalTable extends StatelessWidget {
               DataCell(Text('${tally[p.id] ?? 0}')),
               DataCell(
                 canTransition(p.status, const Removed())
-                    ? TextButton(
-                        onPressed: () => onRemove(p.id),
-                        child: const Text('Ukloni'),
+                    ? Tooltip(
+                        message: 'Ukloni (Delete) — nepovratno',
+                        child: TextButton(
+                          onPressed: () => onRemove(p.id),
+                          child: const Text('Ukloni'),
+                        ),
                       )
                     : const Text('—'),
               ),

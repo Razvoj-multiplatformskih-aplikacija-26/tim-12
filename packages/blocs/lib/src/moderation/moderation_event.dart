@@ -46,3 +46,9 @@ final class ModerationRoomClosed extends ModerationEvent {
   @override
   List<Object?> get props => [roomId];
 }
+
+/// Moderator osvezava prikaz (dugme ili taster `R`): ponovo ucitava trenutnu
+/// sobu, odnosno listu soba kad nijedna soba nije otvorena.
+final class ModerationRefreshed extends ModerationEvent {
+  const ModerationRefreshed();
+}

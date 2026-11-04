@@ -209,4 +209,56 @@ void main() {
       },
     );
   });
+
+  group('osvezavanje', () {
+    blocTest<ModerationBloc, ModerationState>(
+      'otvorena soba ucitava se ponovo',
+      build: build,
+      seed: () => ModerationLoaded(
+        rooms: const [_room],
+        snapshot: _snapshot(proposals: [_proposal('p1')]),
+        tally: const {},
+      ),
+      setUp: () {
+        when(() => repository.loadRoom(any())).thenAnswer(
+          (_) async => _snapshot(proposals: [_proposal('p1')]),
+        );
+      },
+      act: (bloc) => bloc.add(const ModerationRefreshed()),
+      expect: () => [
+        isA<ModerationLoading>(),
+        isA<ModerationLoaded>().having(
+          (s) => s.snapshot?.proposals.length,
+          'broj predloga',
+          1,
+        ),
+      ],
+      verify: (_) {
+        verify(() => repository.loadRoom(any())).called(1);
+      },
+    );
+
+    blocTest<ModerationBloc, ModerationState>(
+      'bez otvorene sobe osvezava se lista soba',
+      build: build,
+      seed: () => const ModerationLoaded(rooms: [_room]),
+      setUp: () {
+        when(() => repository.loadRooms()).thenAnswer(
+          (_) async => const [_room],
+        );
+      },
+      act: (bloc) => bloc.add(const ModerationRefreshed()),
+      expect: () => [
+        isA<ModerationLoading>(),
+        isA<ModerationLoaded>().having(
+          (s) => s.rooms.length,
+          'broj soba',
+          1,
+        ),
+      ],
+      verify: (_) {
+        verify(() => repository.loadRooms()).called(1);
+      },
+    );
+  });
 }

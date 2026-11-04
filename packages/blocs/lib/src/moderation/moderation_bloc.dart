@@ -22,6 +22,7 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
         ModerationProposalRemoved(:final proposalId) =>
           _onProposalRemoved(proposalId, emit),
         ModerationRoomClosed(:final roomId) => _onRoomClosed(roomId, emit),
+        ModerationRefreshed() => _onRefreshed(emit),
       },
       transformer: (events, mapper) => events.asyncExpand(mapper),
     );
@@ -136,6 +137,26 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
         ModerationLoaded(:final rooms) => rooms,
         _ => null,
       };
+
+  /// Osvezavanje: otvorena soba ucitava se ponovo, bez sobe osvezava se
+  /// samo lista (isto kao pocetno ucitavanje). Van podataka nema sta da se
+  /// osvezi — dogadjaj se ignorise (npr. dok port radi ili posle greske,
+  /// gde ekran ima svoje "Pokusaj ponovo").
+  Future<void> _onRefreshed(Emitter<ModerationState> emit) async {
+    final loaded = _currentLoaded;
+    if (loaded == null) return;
+    final snapshot = loaded.snapshot;
+    if (snapshot == null) {
+      emit(const ModerationLoading());
+      try {
+        emit(ModerationLoaded(rooms: await _repository.loadRooms()));
+      } on Exception {
+        emit(const ModerationError());
+      }
+      return;
+    }
+    await _onRoomOpened(snapshot.room.id, emit);
+  }
 
   ModerationLoaded? get _currentLoaded => switch (state) {
         ModerationLoaded loaded => loaded,
