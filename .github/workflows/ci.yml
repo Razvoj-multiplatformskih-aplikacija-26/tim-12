@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  verify:
+    name: Analyze + test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: 3.47.8
+          channel: stable
+          cache: true
+
+      - name: Resolve the workspace
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Test packages and apps
+        run: |
+          for dir in packages/*/ apps/*/; do
+            if [ -d "${dir}test" ]; then
+              echo "::group::${dir}"
+              (cd "${dir}" && flutter test)
+              echo "::endgroup::"
+            fi
+          done
