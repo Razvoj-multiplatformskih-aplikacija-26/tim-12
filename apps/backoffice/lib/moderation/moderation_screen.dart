@@ -5,6 +5,8 @@
 //   ↑/↓ — pomeri izbor (fokus prati izbor, uvek vidljiv kao oznacen red)
 //   Delete — ukloni izabrani predlog (uz dijalog potvrde)
 //   Esc — ponisti izbor (ili nazad na sobe kad nista nije izabrano)
+//   R — osvezi prikaz (isto kao dugme u AppBar-u)
+//   ? — pregled precica (isto kao dugme u AppBar-u)
 //
 // Napomena za Mac: taster koji na Mac tastaturi pise Delete Flutter vidi
 // kao Backspace (Delete je tek Fn+taj taster) — zato brisanje slusa oba.
@@ -20,6 +22,7 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 import 'keyboard_nav.dart';
 import 'detail_panel.dart';
 import 'room_layouts.dart';
+import 'shortcuts_help.dart';
 import 'status_filter.dart';
 
 /// Granica siri/uzak raspored: ispod je lista umesto tabele.
@@ -76,6 +79,18 @@ class _ModerationScreenState extends State<ModerationScreen> {
             builder: (_, title) => Text(title),
           ),
           actions: [
+            IconButton(
+              tooltip: 'Osveži (R)',
+              onPressed: () => context
+                  .read<ModerationBloc>()
+                  .add(const ModerationRefreshed()),
+              icon: const Icon(Icons.refresh),
+            ),
+            IconButton(
+              tooltip: 'Prečice (?)',
+              onPressed: () => showShortcutsHelp(context),
+              icon: const Icon(Icons.keyboard_outlined),
+            ),
             BlocSelector<ModerationBloc, ModerationState, Room?>(
               selector: (state) => switch (state) {
                 ModerationLoaded(:final snapshot) => snapshot?.room,
@@ -83,11 +98,14 @@ class _ModerationScreenState extends State<ModerationScreen> {
               },
               builder: (context, room) => room == null
                   ? const SizedBox.shrink()
-                  : TextButton(
-                      onPressed: room.status is RoomClosed
-                          ? null
-                          : () => _confirmCloseRoom(context, room),
-                      child: const Text('Zatvori sobu'),
+                  : Tooltip(
+                      message: 'Zatvori sobu — nepovratno',
+                      child: TextButton(
+                        onPressed: room.status is RoomClosed
+                            ? null
+                            : () => _confirmCloseRoom(context, room),
+                        child: const Text('Zatvori sobu'),
+                      ),
                     ),
             ),
           ],
@@ -164,6 +182,9 @@ class _ModerationScreenState extends State<ModerationScreen> {
           context.go('/sobe');
         }
       },
+      onRefresh: () =>
+          context.read<ModerationBloc>().add(const ModerationRefreshed()),
+      onShowHelp: () => showShortcutsHelp(context),
       child: Column(
         children: [
           FilterBar(

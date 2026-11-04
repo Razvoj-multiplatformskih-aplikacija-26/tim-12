@@ -154,4 +154,54 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Ukloni predlog?'), findsOneWidget);
   });
+
+  testWidgets('osvezi dugme i R ponovo ucitavaju sobu', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petak u Studentskom'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DataTable), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Osveži (R)'));
+    await tester.pumpAndSettle();
+    expect(find.byType(DataTable), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.keyR);
+    await tester.pumpAndSettle();
+    expect(find.byType(DataTable), findsOneWidget);
+  });
+
+  testWidgets('dugme otvara pregled precica', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petak u Studentskom'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Prečice (?)'));
+    await tester.pumpAndSettle();
+    expect(find.text('Prečice na tastaturi'), findsOneWidget);
+    expect(find.text('Kretanje kroz predloge'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Zatvori'));
+    await tester.pumpAndSettle();
+    expect(find.text('Prečice na tastaturi'), findsNothing);
+  });
+
+  testWidgets('detalj pokazuje vreme predlaganja', (tester) async {
+    await _pumpApp(
+      tester,
+      FakeModerationRepository(delay: Duration.zero),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petak u Studentskom'));
+    await tester.pumpAndSettle();
+    // Bocni panel siri ekrana nosi vreme predlaganja izabranog predloga.
+    expect(find.textContaining('Predložen: '), findsOneWidget);
+  });
 }

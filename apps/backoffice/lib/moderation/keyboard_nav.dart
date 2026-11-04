@@ -1,4 +1,5 @@
-// Tastatura ekrana moderacije: strelice selektuju, Delete uklanja, Esc izlazi.
+// Tastatura ekrana moderacije: strelice selektuju, Delete uklanja, Esc
+// izlazi, R osvezava, ? prikazuje pregled precica.
 //
 // Omotac drzi `autofocus` da tasteri rade odmah po ulazu, bez klika misem.
 // Brisanje slusa i Backspace: taster koji na Mac tastaturi pise Delete
@@ -15,6 +16,8 @@ class KeyboardNav extends StatelessWidget {
     required this.onSelect,
     required this.onRemove,
     required this.onEscape,
+    required this.onRefresh,
+    required this.onShowHelp,
     required this.child,
   });
 
@@ -23,6 +26,12 @@ class KeyboardNav extends StatelessWidget {
   final ValueChanged<ProposalId> onSelect;
   final ValueChanged<ProposalId> onRemove;
   final VoidCallback onEscape;
+
+  /// Osvezi prikaz (taster `R`, isto kao dugme u AppBar-u).
+  final VoidCallback onRefresh;
+
+  /// Prikazi pregled precica (taster `?`, isto kao dugme u AppBar-u).
+  final VoidCallback onShowHelp;
   final Widget child;
 
   @override
@@ -35,6 +44,8 @@ class KeyboardNav extends StatelessWidget {
         // Mac: taster sa oznakom Delete salje Backspace.
         SingleActivator(LogicalKeyboardKey.backspace): _RemoveIntent(),
         SingleActivator(LogicalKeyboardKey.escape): _EscapeIntent(),
+        SingleActivator(LogicalKeyboardKey.keyR): _RefreshIntent(),
+        CharacterActivator('?'): _HelpIntent(),
       },
       child: Actions(
         actions: {
@@ -51,6 +62,18 @@ class KeyboardNav extends StatelessWidget {
           _EscapeIntent: CallbackAction<_EscapeIntent>(
             onInvoke: (_) {
               onEscape();
+              return null;
+            },
+          ),
+          _RefreshIntent: CallbackAction<_RefreshIntent>(
+            onInvoke: (_) {
+              onRefresh();
+              return null;
+            },
+          ),
+          _HelpIntent: CallbackAction<_HelpIntent>(
+            onInvoke: (_) {
+              onShowHelp();
               return null;
             },
           ),
@@ -81,4 +104,12 @@ class _RemoveIntent extends Intent {
 
 class _EscapeIntent extends Intent {
   const _EscapeIntent();
+}
+
+class _RefreshIntent extends Intent {
+  const _RefreshIntent();
+}
+
+class _HelpIntent extends Intent {
+  const _HelpIntent();
 }
