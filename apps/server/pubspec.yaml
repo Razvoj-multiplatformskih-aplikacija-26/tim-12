@@ -12,6 +12,7 @@ dependencies:
   relic: 1.2.0
   radioroom_domain:
     path: ../../packages/domain
+  postgres: ^3.6.0
 
 dev_dependencies:
   lints: ^6.1.0

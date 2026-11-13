@@ -26,5 +26,8 @@ RUN dart compile exe apps/server/bin/server.dart -o /server
 FROM scratch
 COPY --from=build /runtime/ /
 COPY --from=build /server /app/server
+# Migracije se primenjuju pri pokretanju i citaju relativno od /app.
+COPY apps/server/migrations /app/migrations
+WORKDIR /app
 EXPOSE 8080
 CMD ["/app/server"]
