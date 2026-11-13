@@ -15,3 +15,6 @@ build/
 # OS
 .DS_Store
 Thumbs.db
+
+# Tajne (lokalno, van repozitorijuma; sablon je .env.example)
+.env

@@ -9,6 +9,24 @@ jobs:
   verify:
     name: Analyze + test
     runs-on: ubuntu-latest
+    # Baza za testove servera, sa vrednostima iz .env.example (port 5433).
+    services:
+      db:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_DB: radioroom
+          POSTGRES_USER: radioroom
+          POSTGRES_PASSWORD: radioroom-dev
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U radioroom -d radioroom"
+          --health-interval 2s
+          --health-timeout 3s
+          --health-retries 15
+    env:
+      # Testovi nad bazom u CI-ju padaju umesto da se tiho preskoce.
+      REQUIRE_DB: "1"
     steps:
       - uses: actions/checkout@v4
 

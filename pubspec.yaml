@@ -16,6 +16,7 @@ workspace:
   - packages/ui
   - apps/mobile
   - apps/backoffice
+  - apps/server
 
 # Ovaj paket JE koren workspace-a samim tim sto nabraja clanove iznad:
 # jedan `pub get` ovde resava zavisnosti svih clanova u jedan zajednicki
