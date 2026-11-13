@@ -21,8 +21,11 @@ void main() {
   test('GET /health vraca 200 i status ok', () async {
     final client = HttpClient();
     addTearDown(client.close);
-    final response = await (await client.get('localhost', port, '/health'))
-        .close();
+    final response = await (await client.get(
+      'localhost',
+      port,
+      '/health',
+    )).close();
     final body = await response.transform(utf8.decoder).join();
 
     expect(response.statusCode, 200);
@@ -33,8 +36,11 @@ void main() {
   test('nepoznata ruta vraca 404', () async {
     final client = HttpClient();
     addTearDown(client.close);
-    final response = await (await client.get('localhost', port, '/nema'))
-        .close();
+    final response = await (await client.get(
+      'localhost',
+      port,
+      '/nema',
+    )).close();
     await response.drain<void>();
 
     expect(response.statusCode, 404);

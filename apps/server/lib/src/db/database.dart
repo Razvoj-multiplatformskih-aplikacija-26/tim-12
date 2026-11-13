@@ -39,9 +39,7 @@ Future<Pool<void>> openDatabase(
         await pool.close();
         rethrow;
       }
-      stderr.writeln(
-        'Baza nije dostupna (pokusaj $attempt/$attempts): $error',
-      );
+      stderr.writeln('Baza nije dostupna (pokusaj $attempt/$attempts): $error');
       await Future<void>.delayed(pause);
     }
   }

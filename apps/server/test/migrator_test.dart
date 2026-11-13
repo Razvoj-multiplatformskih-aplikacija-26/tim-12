@@ -9,8 +9,7 @@ import 'support/test_db.dart';
 void main() {
   final migrations = Directory('migrations');
 
-  test('primenjuje migracije jednom; drugo pokretanje ne radi nista',
-      () async {
+  test('primenjuje migracije jednom; drugo pokretanje ne radi nista', () async {
     final db = await openTestSchema();
     if (db == null) return;
 
@@ -38,8 +37,9 @@ void main() {
     final dir = Directory.systemTemp.createTempSync('migrations');
     addTearDown(() => dir.deleteSync(recursive: true));
     File('${dir.path}/001_ok.sql').writeAsStringSync('CREATE TABLE a (x int);');
-    File('${dir.path}/002_pada.sql')
-        .writeAsStringSync('CREATE TABLE b (x int); OVO NIJE SQL;');
+    File(
+      '${dir.path}/002_pada.sql',
+    ).writeAsStringSync('CREATE TABLE b (x int); OVO NIJE SQL;');
 
     await expectLater(migrate(db, directory: dir), throwsA(anything));
 
@@ -70,7 +70,8 @@ void main() {
       return db;
     }
 
-    const vote = "INSERT INTO votes (round_id, proposal_id, voter_id) "
+    const vote =
+        "INSERT INTO votes (round_id, proposal_id, voter_id) "
         "VALUES ('k1', 'p1', 'u1')";
 
     test('baza odbija drugi glas istog slusaoca u istoj rundi', () async {
@@ -83,8 +84,11 @@ void main() {
         throwsA(
           isA<ServerException>()
               .having((e) => e.code, 'code', '23505')
-              .having((e) => e.constraintName, 'constraint',
-                  'votes_one_per_round'),
+              .having(
+                (e) => e.constraintName,
+                'constraint',
+                'votes_one_per_round',
+              ),
         ),
       );
     });

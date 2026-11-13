@@ -24,12 +24,13 @@ Future<List<String>> migrate(
     return {for (final row in rows) row[0]! as String};
   });
 
-  final files = directory
-      .listSync()
-      .whereType<File>()
-      .where((f) => f.path.endsWith('.sql'))
-      .toList()
-    ..sort((a, b) => a.path.compareTo(b.path));
+  final files =
+      directory
+          .listSync()
+          .whereType<File>()
+          .where((f) => f.path.endsWith('.sql'))
+          .toList()
+        ..sort((a, b) => a.path.compareTo(b.path));
 
   final newlyApplied = <String>[];
   for (final file in files) {

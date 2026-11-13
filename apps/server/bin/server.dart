@@ -1,4 +1,4 @@
-// Ulazna tacka servera: podesavanja, baza, migracije, pa HTTP.
+// Ulazna tacka servera: podesavanja, baza, migracije, pocetni podaci, HTTP.
 //
 // Slusa na svim adresama (0.0.0.0), jer u Docker kontejneru loopback nije
 // dostupan spolja. Pri pokretanju van Docker-a cita i `.env` iz korena
@@ -30,6 +30,15 @@ Future<void> main() async {
         ? 'Sema je azurna'
         : 'Primenjene migracije: ${applied.join(', ')}',
   );
+  if (await seedIfEmpty(
+    db,
+    hasher: const PasswordHasher(),
+    now: DateTime.now(),
+  )) {
+    stdout.writeln(
+      'Upisani pocetni podaci (demo nalozi: lozinka $demoPassword)',
+    );
+  }
 
   final app = buildApp();
   final server = await app.serve(
