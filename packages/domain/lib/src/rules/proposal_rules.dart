@@ -9,6 +9,8 @@
 // sistemski sat pa su deterministicki testabilna.
 import '../models/ids.dart';
 import '../models/proposal.dart';
+import '../models/role.dart';
+import 'permissions.dart' show UserAction;
 import '../states/proposal_status.dart';
 import '../models/song.dart';
 import '../models/vote.dart';
@@ -97,6 +99,42 @@ final class RoomNotClosable extends ProposalRuleError {
 /// Naziv sobe ne sme biti prazan (samo razmaci se racunaju kao prazno).
 final class RoomNameEmpty extends ProposalRuleError {
   const RoomNameEmpty();
+}
+
+/// Prava (vidi `permissions.dart`): uloga ne sme ovu akciju.
+final class ActionNotAllowed extends ProposalRuleError {
+  const ActionNotAllowed({required this.action, required this.role});
+
+  final UserAction action;
+  final Role role;
+}
+
+/// Prava: blokiran nalog ne sme nista sto menja podatke.
+final class UserBlocked extends ProposalRuleError {
+  const UserBlocked();
+}
+
+/// Prava: backoffice je samo za moderatore; nosi ulogu onoga ko je
+/// pokusao prijavu (npr. slusalac u pogresnoj aplikaciji).
+final class BackofficeNotAllowed extends ProposalRuleError {
+  const BackofficeNotAllowed({required this.role});
+
+  final Role role;
+}
+
+/// Prava: korisnik mobilne aplikacije menja samo svoj predlog.
+final class NotOwnProposal extends ProposalRuleError {
+  const NotOwnProposal({required this.proposalId});
+
+  final ProposalId proposalId;
+}
+
+/// Povlacenje vazi samo dok predlog ceka ishod (predlozena ili u
+/// glasanju) — pobednik se vise ne povlaci, terminalna stanja tek ne.
+final class ProposalNotWithdrawable extends ProposalRuleError {
+  const ProposalNotWithdrawable({required this.proposalId});
+
+  final ProposalId proposalId;
 }
 
 /// Najvise [limit] aktivnih predloga po slusaocu (odluka O6: aktivan =

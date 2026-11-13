@@ -63,4 +63,36 @@ void main() {
       'Naziv sobe ne sme biti prazan.',
     );
   });
+
+  test('akcija van uloge: uloga i akcija iz greske', () {
+    expect(
+      ruleMessage(
+        const ActionNotAllowed(
+          action: UserAction.removeProposal,
+          role: Role.listener,
+        ),
+      ),
+      'Uloga „slušalac“ ne može da uklanja predloge.',
+    );
+  });
+
+  test('backoffice odbija slusaoca i kaze zasto', () {
+    expect(
+      ruleMessage(const BackofficeNotAllowed(role: Role.listener)),
+      'Backoffice je za moderatore. Ovo je nalog slušaoca — '
+      'prijavi se u mobilnoj aplikaciji.',
+    );
+  });
+
+  test('blokiran nalog, tudj i zavrsen predlog', () {
+    expect(ruleMessage(const UserBlocked()), 'Tvoj nalog je blokiran.');
+    expect(
+      ruleMessage(const NotOwnProposal(proposalId: ProposalId('p1'))),
+      'Možeš da povučeš samo svoj predlog.',
+    );
+    expect(
+      ruleMessage(const ProposalNotWithdrawable(proposalId: ProposalId('p7'))),
+      'Predlog može da se povuče samo dok čeka ishod runde.',
+    );
+  });
 }
