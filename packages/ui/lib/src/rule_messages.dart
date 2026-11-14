@@ -21,6 +21,37 @@ String ruleMessage(ProposalRuleError error) => switch (error) {
     'Ovaj predlog je već završen i ne može da se ukloni.',
   RoomNotClosable() => 'Ova soba je već zatvorena.',
   RoomNameEmpty() => 'Naziv sobe ne sme biti prazan.',
+  ActionNotAllowed(:final action, :final role) =>
+    'Uloga „${_roleName(role)}“ ne može da ${_actionText(action)}.',
+  UserBlocked() => 'Tvoj nalog je blokiran.',
+  BackofficeNotAllowed(:final role) =>
+    'Backoffice je za moderatore. Ovo je nalog ${_roleGenitive(role)} — '
+        'prijavi se u mobilnoj aplikaciji.',
+  NotOwnProposal() => 'Možeš da povučeš samo svoj predlog.',
+  ProposalNotWithdrawable() =>
+    'Predlog može da se povuče samo dok čeka ishod runde.',
+};
+
+String _roleName(Role role) => switch (role) {
+  Role.listener => 'slušalac',
+  Role.host => 'host',
+  Role.moderator => 'moderator',
+};
+
+String _roleGenitive(Role role) => switch (role) {
+  Role.listener => 'slušaoca',
+  Role.host => 'hosta',
+  Role.moderator => 'moderatora',
+};
+
+String _actionText(UserAction action) => switch (action) {
+  UserAction.propose => 'predlaže pesme',
+  UserAction.vote => 'glasa',
+  UserAction.withdrawProposal => 'povlači predloge',
+  UserAction.createRoom => 'otvara sobe',
+  UserAction.removeProposal => 'uklanja predloge',
+  UserAction.closeRoom => 'zatvara sobe',
+  UserAction.blockUser => 'blokira naloge',
 };
 
 String _clockTime(DateTime at) =>
