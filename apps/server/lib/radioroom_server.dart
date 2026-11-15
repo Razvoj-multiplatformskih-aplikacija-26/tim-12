@@ -2,7 +2,9 @@
 library;
 
 export 'src/app.dart';
+export 'src/auth/auth.dart';
 export 'src/auth/passwords.dart';
+export 'src/auth/sessions.dart';
 export 'src/config.dart';
 export 'src/db/database.dart';
 export 'src/db/migrator.dart';
