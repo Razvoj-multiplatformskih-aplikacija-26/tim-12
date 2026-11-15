@@ -40,9 +40,42 @@ Lozinka za sve naloge: `demo1234`
 | `spamer` | slušalac | mobilna | blokiran nalog |
 | `luka` | host | mobilna | host soba r1 i r3 |
 | `mila` | host | mobilna | host soba r2 i r4 |
-| `moderator` | moderator | backoffice | |
+| `moderator` | moderator | backoffice | sme i u mobilnu (vidi sobu kao slušalac) |
 
 Sobe: `r1` otvorena (12 predloga u svih 6 stanja, tekuća runda), `r2` otvorena i prazna, `r3` pauzirana, `r4` zatvorena. Vremena su relativna u odnosu na podizanje servera: runda je uvek otvorena, a „Bohemian Rhapsody“ je uvek puštena pre 20 minuta.
+
+## Prijava
+
+Bez prijave rade samo `GET /health` i `POST /auth/login`; svaka druga ruta traži zaglavlje `Authorization: Bearer <token>`. Server prijavu proverava pri svakom pozivu i zna ko poziva samo iz nje — identitet iz tela zahteva ne čita.
+
+| Ruta | Telo / odgovor |
+| --- | --- |
+| `POST /auth/login` | telo `{"username", "password", "app"}`, `app` je `mobile` (podrazumevano) ili `backoffice` → `200 {"token", "expiresAt", "user": {"id", "displayName", "role"}}` |
+| `POST /auth/logout` | briše prijavu iz koje je poziv stigao → `204` |
+| `GET /auth/me` | korisnik iz prijave → `200 {"id", "displayName", "role"}` (klijent posle ponovnog pokretanja po ovome zna da li sačuvana prijava još važi) |
+
+Prijava važi `SESSION_TTL_MINUTES` minuta (u `.env`, razvojno 60). Ko može u koju aplikaciju odlučuju domenska pravila `checkCanUseMobile` i `checkCanUseBackoffice`.
+
+Greške imaju oblik `{"code", "data"}` — kôd i podaci pravila, bez teksta; poruku za korisnika pravi klijent.
+
+| Status | `code` | Kada |
+| --- | --- | --- |
+| 400 | `bad_request` | telo prijave nije ispravno |
+| 401 | `invalid_credentials` | pogrešno ime ili lozinka (ista greška za oba, da se ne vidi koja imena postoje) |
+| 401 | `unauthenticated` | nema tokena, ili je nepoznat (npr. posle odjave) |
+| 401 | `session_expired` | prijava je istekla — klijent vraća korisnika na prijavu |
+| 403 | `user_blocked` | nalog je blokiran (pri prijavi i na svakoj ruti, i ako je blokiran posle prijave) |
+| 403 | `backoffice_not_allowed` | u backoffice ulazi samo moderator; `data.role` je uloga koja je pokušala |
+
+Primer:
+
+```sh
+TOKEN=$(curl -s -X POST localhost:8080/auth/login \
+  -H 'content-type: application/json' \
+  -d '{"username":"ana","password":"demo1234"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
+curl -s localhost:8080/auth/me -H "authorization: Bearer $TOKEN"
+curl -s -X POST localhost:8080/auth/logout -H "authorization: Bearer $TOKEN"
+```
 
 ## Testovi
 
