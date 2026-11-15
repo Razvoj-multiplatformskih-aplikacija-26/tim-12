@@ -12,6 +12,7 @@ final class Config {
     required this.dbName,
     required this.dbUser,
     required this.dbPassword,
+    required this.sessionTtl,
   });
 
   /// Cita podesavanja iz mape okruzenja; baca [ConfigException] sa spiskom
@@ -38,6 +39,7 @@ final class Config {
       dbName: need('DB_NAME'),
       dbUser: need('DB_USER'),
       dbPassword: need('DB_PASSWORD'),
+      sessionTtl: Duration(minutes: needInt('SESSION_TTL_MINUTES')),
     );
     if (missing.isNotEmpty) throw ConfigException(missing);
     return config;
@@ -49,6 +51,9 @@ final class Config {
   final String dbName;
   final String dbUser;
   final String dbPassword;
+
+  /// Koliko vazi prijava; posle toga klijent vraca korisnika na prijavu.
+  final Duration sessionTtl;
 }
 
 final class ConfigException implements Exception {

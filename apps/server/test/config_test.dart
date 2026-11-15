@@ -11,6 +11,7 @@ void main() {
     'DB_NAME': 'radioroom',
     'DB_USER': 'radioroom',
     'DB_PASSWORD': 'tajna',
+    'SESSION_TTL_MINUTES': '45',
   };
 
   test('cita sva podesavanja iz okruzenja', () {
@@ -20,6 +21,7 @@ void main() {
     expect(config.dbHost, 'db');
     expect(config.dbPort, 5432);
     expect(config.dbPassword, 'tajna');
+    expect(config.sessionTtl, const Duration(minutes: 45));
   });
 
   test('PORT nije obavezan (podrazumevano 8080)', () {
@@ -37,6 +39,7 @@ void main() {
           'DB_NAME',
           'DB_USER',
           'DB_PASSWORD',
+          'SESSION_TTL_MINUTES',
         ]),
       ),
     );

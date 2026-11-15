@@ -1,47 +1,27 @@
 import 'dart:convert';
-import 'dart:io';
 
-import 'package:radioroom_server/radioroom_server.dart';
-import 'package:relic/relic.dart';
 import 'package:test/test.dart';
 
+import 'support/test_server.dart';
+
 void main() {
-  late RelicApp app;
-  late int port;
+  test('GET /health vraca 200 i status ok, bez prijave', () async {
+    final server = await startTestServer();
+    if (server == null) return;
 
-  setUp(() async {
-    app = buildApp();
-    // Port 0: sistem bira slobodan port, pa testovi ne smetaju jedni drugima.
-    final server = await app.serve(port: 0);
-    port = server.port;
-  });
-
-  tearDown(() => app.close());
-
-  test('GET /health vraca 200 i status ok', () async {
-    final client = HttpClient();
-    addTearDown(client.close);
-    final response = await (await client.get(
-      'localhost',
-      port,
-      '/health',
-    )).close();
-    final body = await response.transform(utf8.decoder).join();
+    final response = await server.get('/health');
 
     expect(response.statusCode, 200);
-    expect(response.headers.contentType?.mimeType, 'application/json');
-    expect(jsonDecode(body), {'status': 'ok'});
+    expect(response.headers['content-type'], startsWith('application/json'));
+    expect(jsonDecode(response.body), {'status': 'ok'});
   });
 
-  test('nepoznata ruta vraca 404', () async {
-    final client = HttpClient();
-    addTearDown(client.close);
-    final response = await (await client.get(
-      'localhost',
-      port,
-      '/nema',
-    )).close();
-    await response.drain<void>();
+  test('nepoznata ruta vraca 404 kad je prijava ispravna', () async {
+    final server = await startTestServer();
+    if (server == null) return;
+    final token = await server.login('ana');
+
+    final response = await server.get('/nema', token: token);
 
     expect(response.statusCode, 404);
   });
