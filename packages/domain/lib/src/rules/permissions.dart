@@ -50,6 +50,14 @@ RuleOutcome checkAllowed({required User user, required UserAction action}) {
   return const RuleValid();
 }
 
+/// Prijava u mobilnu aplikaciju: svaka uloga koja nije blokirana. Odluka
+/// para: i moderator sme, da sobu vidi ocima slusaoca; sta sme da radi u
+/// sobi i dalje odlucuje [checkAllowed] po akciji.
+RuleOutcome checkCanUseMobile({required User user}) {
+  if (user.blocked) return const RuleInvalid(UserBlocked());
+  return const RuleValid();
+}
+
 /// Prijava u backoffice: samo moderator koji nije blokiran.
 RuleOutcome checkCanUseBackoffice({required User user}) {
   if (user.role != Role.moderator) {

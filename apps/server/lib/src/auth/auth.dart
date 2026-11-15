@@ -69,8 +69,8 @@ final class AuthRoutes {
   }
 
   /// Telo: `{username, password, app}`; `app` je `mobile` (podrazumevano)
-  /// ili `backoffice`. Za backoffice server primenjuje isto domensko
-  /// pravilo kao klijent (`checkCanUseBackoffice`) i isti kod greske.
+  /// ili `backoffice`. Server primenjuje isto domensko pravilo kao klijent
+  /// (`checkCanUseMobile` / `checkCanUseBackoffice`) i isti kod greske.
   Future<Response> login(Request request) async {
     final body = await readJsonObject(request);
     final username = body?['username'];
@@ -94,7 +94,7 @@ final class AuthRoutes {
 
     final outcome = app == 'backoffice'
         ? checkCanUseBackoffice(user: user)
-        : (user.blocked ? const RuleInvalid(UserBlocked()) : const RuleValid());
+        : checkCanUseMobile(user: user);
     switch (outcome.error) {
       case BackofficeNotAllowed(:final role):
         return errorResponse(403, 'backoffice_not_allowed', {

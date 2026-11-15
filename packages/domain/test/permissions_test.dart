@@ -71,6 +71,21 @@ void main() {
     });
   });
 
+  group('checkCanUseMobile', () {
+    for (final role in Role.values) {
+      test('${role.name} ulazi', () {
+        expect(checkCanUseMobile(user: _user(role)), isA<RuleValid>());
+      });
+    }
+
+    test('blokiran nalog ne ulazi', () {
+      expect(
+        checkCanUseMobile(user: _user(Role.listener, blocked: true)).error,
+        isA<UserBlocked>(),
+      );
+    });
+  });
+
   group('checkCanUseBackoffice', () {
     test('moderator ulazi', () {
       expect(
