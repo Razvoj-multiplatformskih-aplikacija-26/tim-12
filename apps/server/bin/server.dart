@@ -40,7 +40,11 @@ Future<void> main() async {
     );
   }
 
-  final app = buildApp(db: db, sessionTtl: config.sessionTtl);
+  final app = buildApp(
+    db: db,
+    sessionTtl: config.sessionTtl,
+    corsOrigins: config.corsOrigins,
+  );
   final server = await app.serve(
     address: InternetAddress.anyIPv4,
     port: config.port,
