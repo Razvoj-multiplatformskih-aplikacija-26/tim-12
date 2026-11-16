@@ -93,6 +93,7 @@ Future<TestServer?> startTestServer({
   final app = buildApp(
     db: pool,
     sessionTtl: sessionTtl,
+    corsOrigins: config.corsOrigins,
     hasher: hasher,
     clock: now,
   );

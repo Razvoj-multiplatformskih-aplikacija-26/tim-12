@@ -77,6 +77,17 @@ curl -s localhost:8080/auth/me -H "authorization: Bearer $TOKEN"
 curl -s -X POST localhost:8080/auth/logout -H "authorization: Bearer $TOKEN"
 ```
 
+## CORS (backoffice u pregledaču)
+
+Pregledač pušta veb backoffice (druga adresa od servera) da zove server samo ako server to dozvoli. Dozvoljene adrese su u `CORS_ORIGINS` u `.env`: razvojno `*` (`flutter run -d chrome` bira slučajan port), u produkciji tačna adresa backoffice-a, više njih odvojeno zarezom. `*` je bezbedno jer prijava putuje u zaglavlju `Authorization`, ne u kolačiću. Mobilnu aplikaciju i curl CORS ne dotiče.
+
+Preflight (`OPTIONS`) dobija `204` bez prijave, a CORS zaglavlja nose i odgovori sa greškom — inače bi pregledač sakrio npr. `session_expired`. Provera:
+
+```sh
+curl -i -X OPTIONS localhost:8080/auth/login \
+  -H 'origin: http://localhost:5000' -H 'access-control-request-method: POST'
+```
+
 ## Testovi
 
 ```sh

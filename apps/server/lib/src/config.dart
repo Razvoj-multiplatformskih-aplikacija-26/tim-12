@@ -13,6 +13,7 @@ final class Config {
     required this.dbUser,
     required this.dbPassword,
     required this.sessionTtl,
+    required this.corsOrigins,
   });
 
   /// Cita podesavanja iz mape okruzenja; baca [ConfigException] sa spiskom
@@ -40,6 +41,11 @@ final class Config {
       dbUser: need('DB_USER'),
       dbPassword: need('DB_PASSWORD'),
       sessionTtl: Duration(minutes: needInt('SESSION_TTL_MINUTES')),
+      corsOrigins: need('CORS_ORIGINS')
+          .split(',')
+          .map((origin) => origin.trim())
+          .where((origin) => origin.isNotEmpty)
+          .toSet(),
     );
     if (missing.isNotEmpty) throw ConfigException(missing);
     return config;
@@ -54,6 +60,10 @@ final class Config {
 
   /// Koliko vazi prijava; posle toga klijent vraca korisnika na prijavu.
   final Duration sessionTtl;
+
+  /// Izvori (adrese veb klijenata) kojima pregledac sme da salje pozive:
+  /// `*` za sve, ili tacne adrese odvojene zarezom (`CORS_ORIGINS`).
+  final Set<String> corsOrigins;
 }
 
 final class ConfigException implements Exception {

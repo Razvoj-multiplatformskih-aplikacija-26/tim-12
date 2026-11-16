@@ -12,6 +12,7 @@ void main() {
     'DB_USER': 'radioroom',
     'DB_PASSWORD': 'tajna',
     'SESSION_TTL_MINUTES': '45',
+    'CORS_ORIGINS': 'http://localhost:5000, https://bo.example',
   };
 
   test('cita sva podesavanja iz okruzenja', () {
@@ -22,6 +23,7 @@ void main() {
     expect(config.dbPort, 5432);
     expect(config.dbPassword, 'tajna');
     expect(config.sessionTtl, const Duration(minutes: 45));
+    expect(config.corsOrigins, {'http://localhost:5000', 'https://bo.example'});
   });
 
   test('PORT nije obavezan (podrazumevano 8080)', () {
@@ -40,6 +42,7 @@ void main() {
           'DB_USER',
           'DB_PASSWORD',
           'SESSION_TTL_MINUTES',
+          'CORS_ORIGINS',
         ]),
       ),
     );
