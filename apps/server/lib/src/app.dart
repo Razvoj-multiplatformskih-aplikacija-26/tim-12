@@ -8,6 +8,8 @@ import 'package:relic/relic.dart';
 import 'auth/auth.dart';
 import 'auth/passwords.dart';
 import 'auth/sessions.dart';
+import 'catalog/catalog_routes.dart';
+import 'catalog/song_catalog.dart';
 import 'http/cors.dart';
 import 'http/json.dart';
 
@@ -22,6 +24,8 @@ RelicApp buildApp({
   required Session db,
   required Duration sessionTtl,
   required Set<String> corsOrigins,
+  required SongCatalog catalog,
+  Duration catalogTimeout = const Duration(seconds: 5),
   PasswordHasher hasher = const PasswordHasher(),
   DateTime Function() clock = DateTime.now,
 }) {
@@ -30,6 +34,7 @@ RelicApp buildApp({
     ..use('/', requireSession(sessions))
     ..get('/health', _health);
   AuthRoutes(db: db, sessions: sessions, hasher: hasher).mount(routes);
+  CatalogRoutes(catalog: catalog, timeout: catalogTimeout).mount(routes);
 
   return RelicApp()
     ..use('/', logRequests())

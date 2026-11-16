@@ -13,6 +13,7 @@ void main() {
     'DB_PASSWORD': 'tajna',
     'SESSION_TTL_MINUTES': '45',
     'CORS_ORIGINS': 'http://localhost:5000, https://bo.example',
+    'SONG_CATALOG_API_KEY': 'kljuc',
   };
 
   test('cita sva podesavanja iz okruzenja', () {
@@ -24,6 +25,7 @@ void main() {
     expect(config.dbPassword, 'tajna');
     expect(config.sessionTtl, const Duration(minutes: 45));
     expect(config.corsOrigins, {'http://localhost:5000', 'https://bo.example'});
+    expect(config.songCatalogApiKey, 'kljuc');
   });
 
   test('PORT nije obavezan (podrazumevano 8080)', () {
@@ -43,6 +45,7 @@ void main() {
           'DB_PASSWORD',
           'SESSION_TTL_MINUTES',
           'CORS_ORIGINS',
+          'SONG_CATALOG_API_KEY',
         ]),
       ),
     );
