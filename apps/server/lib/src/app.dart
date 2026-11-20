@@ -12,6 +12,7 @@ import 'catalog/catalog_routes.dart';
 import 'catalog/song_catalog.dart';
 import 'http/cors.dart';
 import 'http/json.dart';
+import 'rooms/room_routes.dart';
 
 /// Pravi aplikaciju sa svim rutama servera.
 ///
@@ -35,6 +36,7 @@ RelicApp buildApp({
     ..get('/health', _health);
   AuthRoutes(db: db, sessions: sessions, hasher: hasher).mount(routes);
   CatalogRoutes(catalog: catalog, timeout: catalogTimeout).mount(routes);
+  RoomRoutes(db: db).mount(routes);
 
   return RelicApp()
     ..use('/', logRequests())

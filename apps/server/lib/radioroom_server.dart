@@ -12,3 +12,5 @@ export 'src/config.dart';
 export 'src/db/database.dart';
 export 'src/db/migrator.dart';
 export 'src/db/seed.dart';
+export 'src/rooms/room_routes.dart';
+export 'src/rooms/room_store.dart';
