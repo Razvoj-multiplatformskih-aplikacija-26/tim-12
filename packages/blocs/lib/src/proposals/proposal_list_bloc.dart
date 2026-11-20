@@ -58,6 +58,7 @@ final class ProposalListBloc
     if (snapshot == null) return;
 
     final violation = _firstViolation([
+      checkRoomOpen(room: snapshot.room),
       checkMaxActiveProposals(
         proposals: snapshot.proposals,
         userId: _currentUser,
@@ -109,6 +110,7 @@ final class ProposalListBloc
     if (proposal == null) return;
 
     final violation = _firstViolation([
+      checkRoomOpen(room: snapshot.room),
       checkVoteTarget(proposal: proposal),
       checkSingleVotePerRound(
         votes: snapshot.votes,

@@ -255,4 +255,52 @@ void main() {
       }
     });
   });
+
+  group('checkRoomOpen', () {
+    Room room(RoomStatus status) => Room(
+          id: _room,
+          name: 'Petak',
+          hostId: const UserId('h1'),
+          status: status,
+        );
+
+    test('u otvorenoj sobi sme', () {
+      expect(checkRoomOpen(room: room(const RoomOpen())).isValid, isTrue);
+    });
+
+    test('u pauziranoj i zatvorenoj ne sme, greska nosi stanje', () {
+      for (final status in [const RoomPaused(), const RoomClosed()]) {
+        final error = checkRoomOpen(room: room(status)).error;
+        expect(error, isA<RoomNotOpen>(), reason: '$status');
+        expect((error! as RoomNotOpen).status, status);
+      }
+    });
+  });
+
+  group('checkCurrentRound', () {
+    final current = Round(
+      id: const RoundId('rd2'),
+      roomId: _room,
+      startsAt: _at,
+      endsAt: _at.add(const Duration(minutes: 10)),
+    );
+
+    test('glas za tekucu rundu prolazi', () {
+      expect(
+        checkCurrentRound(current: current, roundId: const RoundId('rd2'))
+            .isValid,
+        isTrue,
+      );
+    });
+
+    test('glas za raniju rundu je zakasneo', () {
+      final error = checkCurrentRound(
+        current: current,
+        roundId: const RoundId('rd1'),
+      ).error;
+      expect(error, isA<RoundClosed>());
+      expect((error! as RoundClosed).roundId, const RoundId('rd1'));
+    });
+  });
+
 }
