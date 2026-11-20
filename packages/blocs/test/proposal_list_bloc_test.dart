@@ -50,9 +50,10 @@ Vote _vote(String id, {required String proposal, UserId by = _other}) => Vote(
 RoomSnapshot _snapshot({
   List<Proposal> proposals = const [],
   List<Vote> votes = const [],
+  Room room = _room,
 }) =>
     RoomSnapshot(
-      room: _room,
+      room: room,
       round: _round,
       proposals: proposals,
       votes: votes,
@@ -318,6 +319,36 @@ void main() {
       act: (bloc) => bloc.add(const ProposalAdded(_song)),
       expect: () => [_ruleError<RecentlyPlayedSong>()],
       verify: (_) => verifyNoPropose(),
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'zatvorena soba: RoomNotOpen, port se ne zove',
+      build: build,
+      seed: () => _loaded(
+        _snapshot(
+          proposals: [_proposal('p1')],
+          room: _room.withStatus(const RoomClosed()),
+        ),
+      ),
+      act: (bloc) => bloc.add(const ProposalAdded(_song)),
+      expect: () => [_ruleError<RoomNotOpen>()],
+      verify: (_) => verifyNoPropose(),
+    );
+  });
+
+  group('soba koja nije otvorena', () {
+    blocTest<ProposalListBloc, ProposalListState>(
+      'glas u pauziranoj sobi: RoomNotOpen, port se ne zove',
+      build: build,
+      seed: () => _loaded(
+        _snapshot(
+          proposals: [_proposal('p1')],
+          room: _room.withStatus(const RoomPaused()),
+        ),
+      ),
+      act: (bloc) => bloc.add(const VoteCast(ProposalId('p1'))),
+      expect: () => [_ruleError<RoomNotOpen>()],
+      verify: (_) => verifyNoVote(),
     );
   });
 }

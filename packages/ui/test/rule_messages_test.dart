@@ -95,4 +95,23 @@ void main() {
       'Predlog može da se povuče samo dok čeka ishod runde.',
     );
   });
+
+  test('soba koja nije otvorena: poruka po stanju', () {
+    expect(
+      ruleMessage(const RoomNotOpen(status: RoomClosed())),
+      'Soba je zatvorena — u njoj se više ne predlaže i ne glasa.',
+    );
+    expect(
+      ruleMessage(const RoomNotOpen(status: RoomPaused())),
+      'Soba je pauzirana — predlozi i glasovi čekaju da se ponovo otvori.',
+    );
+  });
+
+  test('zakasneli glas: runda je vec zatvorena', () {
+    expect(
+      ruleMessage(const RoundClosed(roundId: RoundId('rd1'))),
+      'Runda je završena pre nego što je glas stigao — glas nije ubrojan. '
+      'Pogledaj pobednika i glasaj u novoj rundi.',
+    );
+  });
 }

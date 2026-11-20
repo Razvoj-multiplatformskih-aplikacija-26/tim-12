@@ -10,6 +10,9 @@
 import '../models/ids.dart';
 import '../models/proposal.dart';
 import '../models/role.dart';
+import '../models/room.dart';
+import '../models/round.dart';
+import '../states/room_status.dart';
 import 'permissions.dart' show UserAction;
 import '../states/proposal_status.dart';
 import '../models/song.dart';
@@ -137,6 +140,22 @@ final class ProposalNotWithdrawable extends ProposalRuleError {
   final ProposalId proposalId;
 }
 
+/// Soba nije otvorena (pauzirana ili zatvorena): u njoj se ne predlaze i
+/// ne glasa. Nosi stanje sobe, da poruka kaze zasto.
+final class RoomNotOpen extends ProposalRuleError {
+  const RoomNotOpen({required this.status});
+
+  final RoomStatus status;
+}
+
+/// Glas za rundu koja vise nije tekuca: klijent je zakasnio, runda je
+/// zatvorena i pobednik izabran. O tome konacno odlucuje server.
+final class RoundClosed extends ProposalRuleError {
+  const RoundClosed({required this.roundId});
+
+  final RoundId roundId;
+}
+
 /// Najvise [limit] aktivnih predloga po slusaocu (odluka O6: aktivan =
 /// predlozena ili u glasanju). Proverava se PRE pravljenja novog predloga,
 /// zato prekrsaj nastaje vec kad broj dostigne limit.
@@ -220,6 +239,28 @@ RuleOutcome checkSingleVotePerRound({
   );
   if (already) {
     return RuleInvalid(AlreadyVotedInRound(voterId: voterId, roundId: roundId));
+  }
+  return const RuleValid();
+}
+
+/// Predlaze se i glasa samo u otvorenoj sobi; pauzirana i zatvorena ne
+/// primaju nista novo.
+RuleOutcome checkRoomOpen({required Room room}) {
+  if (room.status is! RoomOpen) {
+    return RuleInvalid(RoomNotOpen(status: room.status));
+  }
+  return const RuleValid();
+}
+
+/// Glas vazi samo za tekucu rundu [current]. Glas za raniju rundu
+/// ([roundId]) stigao je posle njenog zatvaranja — zakasneli klijent dobija
+/// ovaj razlog, ponovo ucitava sobu i vidi pobednika i novu rundu.
+RuleOutcome checkCurrentRound({
+  required Round current,
+  required RoundId roundId,
+}) {
+  if (current.id != roundId) {
+    return RuleInvalid(RoundClosed(roundId: roundId));
   }
   return const RuleValid();
 }

@@ -11,6 +11,7 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:relic/relic.dart';
 
 import '../http/json.dart';
+import '../http/rule_errors.dart';
 import 'passwords.dart';
 import 'sessions.dart';
 import 'users.dart';
@@ -95,15 +96,7 @@ final class AuthRoutes {
     final outcome = app == 'backoffice'
         ? checkCanUseBackoffice(user: user)
         : checkCanUseMobile(user: user);
-    switch (outcome.error) {
-      case BackofficeNotAllowed(:final role):
-        return errorResponse(403, 'backoffice_not_allowed', {
-          'role': role.name,
-        });
-      case UserBlocked():
-        return errorResponse(403, 'user_blocked');
-      case _:
-    }
+    if (outcome.error case final error?) return ruleErrorResponse(error);
 
     final (token, expiresAt) = await sessions.create(user.id);
     return jsonResponse({

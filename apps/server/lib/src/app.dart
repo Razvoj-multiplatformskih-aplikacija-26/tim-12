@@ -22,8 +22,9 @@ import 'rooms/room_routes.dart';
 /// bi ni stigao do CORS-a. Odbaceno: ruta `options('/**')` — tacna ruta
 /// ima prednost (opet 405), a nepostojeca putanja daje 405 umesto 404.
 RelicApp buildApp({
-  required Session db,
+  required Pool<void> db,
   required Duration sessionTtl,
+  Duration roundLength = const Duration(minutes: 10),
   required Set<String> corsOrigins,
   required SongCatalog catalog,
   Duration catalogTimeout = const Duration(seconds: 5),
@@ -36,7 +37,7 @@ RelicApp buildApp({
     ..get('/health', _health);
   AuthRoutes(db: db, sessions: sessions, hasher: hasher).mount(routes);
   CatalogRoutes(catalog: catalog, timeout: catalogTimeout).mount(routes);
-  RoomRoutes(db: db).mount(routes);
+  RoomRoutes(db: db, roundLength: roundLength, clock: clock).mount(routes);
 
   return RelicApp()
     ..use('/', logRequests())

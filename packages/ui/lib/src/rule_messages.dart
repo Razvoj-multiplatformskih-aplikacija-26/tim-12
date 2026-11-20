@@ -30,6 +30,14 @@ String ruleMessage(ProposalRuleError error) => switch (error) {
   NotOwnProposal() => 'Možeš da povučeš samo svoj predlog.',
   ProposalNotWithdrawable() =>
     'Predlog može da se povuče samo dok čeka ishod runde.',
+  RoomNotOpen(:final status) => switch (status) {
+    RoomClosed() =>
+      'Soba je zatvorena — u njoj se više ne predlaže i ne glasa.',
+    _ => 'Soba je pauzirana — predlozi i glasovi čekaju da se ponovo otvori.',
+  },
+  RoundClosed() =>
+    'Runda je završena pre nego što je glas stigao — glas nije ubrojan. '
+        'Pogledaj pobednika i glasaj u novoj rundi.',
 };
 
 String _roleName(Role role) => switch (role) {

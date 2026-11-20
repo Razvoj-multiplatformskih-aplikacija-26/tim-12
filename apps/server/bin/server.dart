@@ -43,6 +43,7 @@ Future<void> main() async {
   final app = buildApp(
     db: db,
     sessionTtl: config.sessionTtl,
+    roundLength: config.roundLength,
     corsOrigins: config.corsOrigins,
     // KT2: lazni katalog; prava implementacija menja samo ovaj red.
     catalog: FakeSongCatalog(apiKey: config.songCatalogApiKey),
