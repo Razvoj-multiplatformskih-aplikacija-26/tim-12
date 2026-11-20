@@ -48,10 +48,13 @@ final class TestServer {
 }
 
 /// Podize server nad novom semom, ili vraca `null` (test se preskace) kad
-/// baza nije dostupna. [clock] menja "sad" servera (istek prijave).
+/// baza nije dostupna. [clock] menja "sad" servera (istek prijave);
+/// [catalog] zamenjuje lazni katalog (npr. servisom koji ne odgovara).
 Future<TestServer?> startTestServer({
   DateTime Function()? clock,
   Duration sessionTtl = const Duration(minutes: 60),
+  SongCatalog? catalog,
+  Duration catalogTimeout = const Duration(seconds: 5),
 }) async {
   final config = Config.fromEnvironment(_env);
   final endpoint = Endpoint(
@@ -94,6 +97,8 @@ Future<TestServer?> startTestServer({
     db: pool,
     sessionTtl: sessionTtl,
     corsOrigins: config.corsOrigins,
+    catalog: catalog ?? FakeSongCatalog(apiKey: config.songCatalogApiKey),
+    catalogTimeout: catalogTimeout,
     hasher: hasher,
     clock: now,
   );

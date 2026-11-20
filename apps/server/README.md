@@ -77,6 +77,23 @@ curl -s localhost:8080/auth/me -H "authorization: Bearer $TOKEN"
 curl -s -X POST localhost:8080/auth/logout -H "authorization: Bearer $TOKEN"
 ```
 
+## Katalog pesama (spoljni servis)
+
+Pretragu pesama zove samo server, kroz port `SongCatalog` (`lib/src/catalog/`); ključ `SONG_CATALOG_API_KEY` je samo u `.env` servera. Za KT2 iza porta stoji lažna implementacija (`FakeSongCatalog`, ~20 pesama u memoriji, bez mreže); prava menja jedan red u `bin/server.dart`.
+
+| Ruta | Odgovor |
+| --- | --- |
+| `GET /catalog/search?q=…` (traži prijavu) | `200 {"songs": [{"title", "artist", "album", "durationMs", "externalLink"}]}` — po naslovu ili izvođaču, bez obzira na velika slova; ništa nađeno = prazan spisak |
+
+| Status | `code` | Kada |
+| --- | --- | --- |
+| 400 | `bad_request` | `q` nedostaje, prazan je ili duži od 100 znakova |
+| 503 | `catalog_unavailable` | servis javi grešku ili ne odgovori za 5 s — klijent kaže da pretraga trenutno nije dostupna |
+
+```sh
+curl -s "localhost:8080/catalog/search?q=queen" -H "authorization: Bearer $TOKEN"
+```
+
 ## CORS (backoffice u pregledaču)
 
 Pregledač pušta veb backoffice (druga adresa od servera) da zove server samo ako server to dozvoli. Dozvoljene adrese su u `CORS_ORIGINS` u `.env`: razvojno `*` (`flutter run -d chrome` bira slučajan port), u produkciji tačna adresa backoffice-a, više njih odvojeno zarezom. `*` je bezbedno jer prijava putuje u zaglavlju `Authorization`, ne u kolačiću. Mobilnu aplikaciju i curl CORS ne dotiče.

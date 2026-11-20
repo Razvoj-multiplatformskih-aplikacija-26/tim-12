@@ -44,6 +44,8 @@ Future<void> main() async {
     db: db,
     sessionTtl: config.sessionTtl,
     corsOrigins: config.corsOrigins,
+    // KT2: lazni katalog; prava implementacija menja samo ovaj red.
+    catalog: FakeSongCatalog(apiKey: config.songCatalogApiKey),
   );
   final server = await app.serve(
     address: InternetAddress.anyIPv4,

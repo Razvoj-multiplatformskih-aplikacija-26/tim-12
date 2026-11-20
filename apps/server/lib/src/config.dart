@@ -14,6 +14,7 @@ final class Config {
     required this.dbPassword,
     required this.sessionTtl,
     required this.corsOrigins,
+    required this.songCatalogApiKey,
   });
 
   /// Cita podesavanja iz mape okruzenja; baca [ConfigException] sa spiskom
@@ -46,6 +47,7 @@ final class Config {
           .map((origin) => origin.trim())
           .where((origin) => origin.isNotEmpty)
           .toSet(),
+      songCatalogApiKey: need('SONG_CATALOG_API_KEY'),
     );
     if (missing.isNotEmpty) throw ConfigException(missing);
     return config;
@@ -64,6 +66,10 @@ final class Config {
   /// Izvori (adrese veb klijenata) kojima pregledac sme da salje pozive:
   /// `*` za sve, ili tacne adrese odvojene zarezom (`CORS_ORIGINS`).
   final Set<String> corsOrigins;
+
+  /// Kljuc spoljnog servisa (katalog pesama). Postoji samo na serveru —
+  /// klijenti servis ne zovu.
+  final String songCatalogApiKey;
 }
 
 final class ConfigException implements Exception {
