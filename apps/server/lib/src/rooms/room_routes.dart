@@ -1,6 +1,10 @@
-// Sobe: citanje (`GET /rooms`, `GET /rooms/:id`), predlaganje
-// (`POST /rooms/:id/proposals`) i glasanje (`POST /rooms/:id/votes`). Sve
-// traze prijavu, kao svaka ruta van `publicPaths`.
+// Sobe: citanje (`GET /rooms`, `GET /rooms/:id`), predlaganje i glasanje,
+// akcije moderatora (zatvaranje sobe, uklanjanje predloga), povlacenje
+// svog predloga i nova soba. Sve traze prijavu, kao svaka ruta van
+// `publicPaths`.
+//
+// Akcije su posebne rute (`…/remove`, `…/close`), a ne `PATCH {status}`:
+// pravilo je prelaz, ne polje — klijent ne bira ciljno stanje.
 //
 // Svaki pristup jednoj sobi je jedna transakcija koja prvo zakljuca sobu i
 // zatvori isteklu rundu (`round_closing.dart`), pa tek onda cita ili upisuje.
@@ -48,8 +52,12 @@ final class RoomRoutes {
     app
       ..get('/rooms', list)
       ..get('/rooms/:id', show)
+      ..post('/rooms', create)
       ..post('/rooms/:id/proposals', propose)
-      ..post('/rooms/:id/votes', vote);
+      ..post('/rooms/:id/votes', vote)
+      ..post('/rooms/:id/close', close)
+      ..post('/rooms/:id/proposals/:pid/remove', remove)
+      ..post('/rooms/:id/proposals/:pid/withdraw', withdraw);
   }
 
   Future<Response> list(Request request) async {
@@ -142,6 +150,100 @@ final class RoomRoutes {
         );
       }
       return jsonResponse(voteJson(vote), status: 201);
+    });
+  }
+
+  /// Telo: `{name}`. Sobu otvara host; host je korisnik iz prijave, a soba
+  /// odmah dobija prvu rundu (soba bez runde ne postoji).
+  Future<Response> create(Request request) async {
+    final name = (await readJsonObject(request))?['name'];
+    if (name is! String) return errorResponse(400, 'bad_request');
+    final user = request.currentUser;
+
+    final violation = firstViolation([
+      checkAllowed(user: user, action: UserAction.createRoom),
+      checkRoomName(name: name),
+    ]);
+    if (violation != null) return ruleErrorResponse(violation);
+
+    final now = _clock();
+    final room = Room(id: RoomId(newId()), name: name.trim(), hostId: user.id);
+    await db.runTx((tx) async {
+      await insertRoom(tx, room);
+      await insertRound(
+        tx,
+        Round(
+          id: RoundId(newId()),
+          roomId: room.id,
+          startsAt: now,
+          endsAt: now.add(roundLength),
+        ),
+      );
+    });
+    return jsonResponse(roomJson(room), status: 201);
+  }
+
+  /// Moderator zatvara sobu; zatvorena soba ne prima predloge ni glasove.
+  /// Prelaz proverava isto pravilo stanja sobe kao `ModerationBloc`.
+  Future<Response> close(Request request) {
+    final user = request.currentUser;
+    return _inRoom(request, (tx, view, now) async {
+      final allowed = checkAllowed(user: user, action: UserAction.closeRoom);
+      if (allowed.error case final error?) return ruleErrorResponse(error);
+      if (!canTransitionRoom(view.room.status, const RoomClosed())) {
+        return ruleErrorResponse(const RoomNotClosable());
+      }
+
+      final closed = view.room.withStatus(const RoomClosed());
+      await setRoomStatus(tx, closed.id, closed.status);
+      return jsonResponse(roomJson(closed));
+    });
+  }
+
+  /// Moderator uklanja nezavrsen predlog (bilo ciji).
+  Future<Response> remove(Request request) {
+    final user = request.currentUser;
+    return _inProposal(request, (tx, proposal) async {
+      final violation = firstViolation([
+        checkAllowed(user: user, action: UserAction.removeProposal),
+        checkRemovable(proposal: proposal),
+      ]);
+      if (violation != null) return ruleErrorResponse(violation);
+      return _markRemoved(tx, proposal);
+    });
+  }
+
+  /// Slusalac povlaci SVOJ predlog dok ceka ishod; tudj predlog server
+  /// odbija (`not_own_proposal`). Povucen predlog prelazi u `removed` —
+  /// domen nema posebno stanje, a `canTransition` taj prelaz vec dozvoljava.
+  Future<Response> withdraw(Request request) {
+    final user = request.currentUser;
+    return _inProposal(request, (tx, proposal) async {
+      final outcome = checkCanWithdraw(user: user, proposal: proposal);
+      if (outcome.error case final error?) return ruleErrorResponse(error);
+      return _markRemoved(tx, proposal);
+    });
+  }
+
+  Future<Response> _markRemoved(Session tx, Proposal proposal) async {
+    final removed = proposal.withStatus(const Removed());
+    await setProposalStatus(tx, removed.id, removed.status);
+    return jsonResponse(proposalJson(removed));
+  }
+
+  /// Kao [_inRoom], za predlog iz putanje (`:pid`) u toj sobi; predlog van
+  /// sobe je `404 proposal_not_found`.
+  Future<Response> _inProposal(
+    Request request,
+    Future<Response> Function(Session tx, Proposal proposal) action,
+  ) {
+    final proposalId = request.rawPathParameters[#pid]!;
+    return _inRoom(request, (tx, view, now) async {
+      final proposal = view.proposals
+          .where((p) => p.id.value == proposalId)
+          .firstOrNull;
+      if (proposal == null) return errorResponse(404, 'proposal_not_found');
+      return action(tx, proposal);
     });
   }
 
