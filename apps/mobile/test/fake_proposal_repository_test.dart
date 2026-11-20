@@ -4,6 +4,7 @@
 // slozeni tako da se svako pravilo moze pokazati uzivo, i da se lazni port
 // ponasa kao server (upis ostaje, greska je jednokratna, snimak je kopija).
 import 'package:flutter_test/flutter_test.dart';
+import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_mobile/data/demo_room.dart';
 import 'package:radioroom_mobile/data/fake_proposal_repository.dart';
@@ -90,6 +91,25 @@ void main() {
       await expectLater(repository.loadRoom(demoRoomId), throwsException);
       expect(repository.failNext, isFalse);
       await expectLater(repository.loadRoom(demoRoomId), completes);
+    });
+
+    test('failNextRejected baca ServerRejected samo sledeci zahtev', () async {
+      final repository = _repository()..failNextRejected = true;
+      await expectLater(
+        repository.loadRoom(demoRoomId),
+        throwsA(
+          isA<ServerRejected>()
+              .having((e) => e.error, 'razlog', repository.rejectionReason),
+        ),
+      );
+      expect(repository.failNextRejected, isFalse);
+      await expectLater(repository.loadRoom(demoRoomId), completes);
+    });
+
+    test('failNextRejected ne dira tehnicku gresku', () async {
+      final repository = _repository()..failNext = true;
+      await expectLater(repository.loadRoom(demoRoomId), throwsException);
+      expect(repository.failNextRejected, isFalse);
     });
 
     test('upis ostaje i dobija nove ID-jeve', () async {

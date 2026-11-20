@@ -37,13 +37,18 @@ class _RoomsScreenState extends State<RoomsScreen> {
       },
       child: BlocListener<RoomsBloc, RoomsState>(
         listenWhen: (_, state) =>
-            state is RoomsLoaded && state.ruleError != null,
+            (state is RoomsLoaded && state.ruleError != null) ||
+            (state is RoomsError && state.reason != null),
         listener: (context, state) {
-          if (state case RoomsLoaded(ruleError: final error?)) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
-          }
+          final message = switch (state) {
+            RoomsLoaded(ruleError: final error?) => ruleMessage(error),
+            RoomsError(reason: final reason?) => serverMessage(reason),
+            _ => null,
+          };
+          if (message == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
         },
         child: DefaultTabController(
           length: 2,

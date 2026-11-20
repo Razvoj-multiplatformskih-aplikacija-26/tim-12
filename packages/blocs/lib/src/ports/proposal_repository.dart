@@ -4,7 +4,12 @@
 // lazna, u memoriji); u KT2 je zamenjuje klijent servera, a Bloc i ekran
 // se ne menjaju — to je dokaz razdvajanja na odbrani.
 //
-// Tehnicki neuspeh implementacija prijavljuje bacanjem [Exception].
+// Greske implementacija prijavljuje bacanjem: `ServerRejected` kad server
+// odbije zahtev (razlog `{code, data}` iz ugovora, bez teksta poruke) ili
+// genericki `Exception` za tehnicki kvar (mreza, kvar). Bloc na odbijanje
+// nosi razlog u stanje i sam osvezava podatke; na tehnicki kvar nudi samo
+// "Pokusaj ponovo".
+//
 // Pravila NISU posao implementacije: Bloc ih proverava domenom pre poziva.
 import 'package:radioroom_domain/radioroom_domain.dart';
 

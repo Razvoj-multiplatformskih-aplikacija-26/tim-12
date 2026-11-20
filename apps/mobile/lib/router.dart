@@ -89,8 +89,9 @@ GoRouter createRouter({
   errorBuilder: (context, state) => const _NotFoundScreen(),
 );
 
-/// Prekrsaj pravila (`ruleError`) postaje SnackBar sa porukom na srpskom.
-/// Tehnicka greska NIJE ovde — nju crta svaki ekran kao ekran greske.
+/// Prekrsaj pravila (`ruleError`) i serversko odbijanje (`reason` iz
+/// `ProposalsError`) postaju SnackBar sa porukom na srpskom. Tehnicka
+/// greska NIJE ovde — nju crta svaki ekran kao ekran greske.
 class _RuleErrorListener extends StatelessWidget {
   const _RuleErrorListener({required this.child});
 
@@ -100,13 +101,18 @@ class _RuleErrorListener extends StatelessWidget {
   Widget build(BuildContext context) =>
       BlocListener<ProposalListBloc, ProposalListState>(
         listenWhen: (_, state) =>
-            state is ProposalsLoaded && state.ruleError != null,
+            (state is ProposalsLoaded && state.ruleError != null) ||
+            (state is ProposalsError && state.reason != null),
         listener: (context, state) {
-          if (state case ProposalsLoaded(ruleError: final error?)) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
-          }
+          final message = switch (state) {
+            ProposalsLoaded(ruleError: final error?) => ruleMessage(error),
+            ProposalsError(reason: final reason?) => serverMessage(reason),
+            _ => null,
+          };
+          if (message == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
         },
         child: child,
       );
