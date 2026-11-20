@@ -14,3 +14,5 @@ export 'src/db/migrator.dart';
 export 'src/db/seed.dart';
 export 'src/rooms/room_routes.dart';
 export 'src/rooms/room_store.dart';
+export 'src/rooms/round_closing.dart';
+export 'src/http/rule_errors.dart';

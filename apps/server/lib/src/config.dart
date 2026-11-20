@@ -15,6 +15,7 @@ final class Config {
     required this.sessionTtl,
     required this.corsOrigins,
     required this.songCatalogApiKey,
+    this.roundLength = const Duration(minutes: 10),
   });
 
   /// Cita podesavanja iz mape okruzenja; baca [ConfigException] sa spiskom
@@ -48,6 +49,9 @@ final class Config {
           .where((origin) => origin.isNotEmpty)
           .toSet(),
       songCatalogApiKey: need('SONG_CATALOG_API_KEY'),
+      roundLength: Duration(
+        minutes: int.tryParse(env['ROUND_MINUTES'] ?? '') ?? 10,
+      ),
     );
     if (missing.isNotEmpty) throw ConfigException(missing);
     return config;
@@ -70,6 +74,10 @@ final class Config {
   /// Kljuc spoljnog servisa (katalog pesama). Postoji samo na serveru —
   /// klijenti servis ne zovu.
   final String songCatalogApiKey;
+
+  /// Trajanje runde glasanja (`ROUND_MINUTES`, podrazumevano 10). Nije
+  /// obavezno, kao `PORT`: postojeci `.env` bez njega i dalje radi.
+  final Duration roundLength;
 }
 
 final class ConfigException implements Exception {

@@ -42,7 +42,7 @@ Lozinka za sve naloge: `demo1234`
 | `mila` | host | mobilna | host soba r2 i r4 |
 | `moderator` | moderator | backoffice | sme i u mobilnu (vidi sobu kao slušalac) |
 
-Sobe: `r1` otvorena (12 predloga u svih 6 stanja, tekuća runda), `r2` otvorena i prazna, `r3` pauzirana, `r4` zatvorena. Vremena su relativna u odnosu na podizanje servera: runda je uvek otvorena, a „Bohemian Rhapsody“ je uvek puštena pre 20 minuta.
+Sobe: `r1` otvorena (12 predloga u svih 6 stanja, tekuća runda), `r2` otvorena i prazna, `r3` pauzirana, `r4` zatvorena. Vremena su relativna u odnosu na podizanje servera: runda u `r1` ističe 8 minuta posle podizanja (posle toga server sam zatvara rundu i otvara sledeću, vidi „Sobe i glasanje“), a „Bohemian Rhapsody“ je puštena 20 minuta pre podizanja.
 
 ## Prijava
 
@@ -75,6 +75,53 @@ TOKEN=$(curl -s -X POST localhost:8080/auth/login \
   -d '{"username":"ana","password":"demo1234"}' | sed 's/.*"token":"\([^"]*\)".*/\1/')
 curl -s localhost:8080/auth/me -H "authorization: Bearer $TOKEN"
 curl -s -X POST localhost:8080/auth/logout -H "authorization: Bearer $TOKEN"
+```
+
+## Sobe i glasanje
+
+Sve rute traže prijavu. Predlagač i glasač su uvek korisnik iz prijave — `proposedBy` ili `voterId` u telu se ne čitaju. Pre upisa server proverava ista domenska pravila kao Bloc na klijentu (`packages/domain`), istim redom, i odbija poziv mimo aplikacije istim kodom greške.
+
+| Ruta | Telo / odgovor |
+| --- | --- |
+| `GET /rooms` | `200 {"rooms": [{"id", "name", "hostId", "status"}]}` |
+| `GET /rooms/:id` | `200 {"room", "round": {"id", "roomId", "startsAt", "endsAt"}, "proposals": [...], "votes": [...]}` — svi predlozi sobe (i pušteni) i glasovi tekuće runde |
+| `POST /rooms/:id/proposals` | telo `{"song": {"title", "artist", "externalLink"?, "durationMs"?, "coverUrl"?, "album"?}}` → `201` predlog u stanju `proposed`; u glasanje ulazi sa sledećom rundom |
+| `POST /rooms/:id/votes` | telo `{"roundId", "proposalId"}` → `201 {"id", "roundId", "proposalId", "voterId", "castAt"}` |
+
+Predlog: `{"id", "roomId", "song", "proposedBy", "proposedAt", "status"}`, a pušten i `"playedAt"`. Na mreži su vremena ISO 8601 u UTC, a stanja tekstualni kodovi kao u bazi: predlog `proposed`, `in_voting`, `winner`, `played`, `rejected`, `removed`; soba `open`, `paused`, `closed`.
+
+**Runda.** Pobednika bira server. Kad runda istekne, prvi sledeći pristup sobi (i čitanje) je zatvara, u istoj transakciji u kojoj se piše: predlog sa najviše glasova postaje `winner` (nerešeno: ranije predložen), ostali u glasanju `rejected`, a gubitnici sa bar jednim glasom vraćaju se kao novi predlozi. Otvara se nova runda od `ROUND_MINUTES` minuta (u `.env`, podrazumevano 10) i svi predlozi koji čekaju ulaze u glasanje. Runda bez ijednog glasa nikoga ne odbija. Pauzirana i zatvorena soba ne zatvaraju rundu.
+
+**Istovremeni pozivi.** Svaki pristup sobi zaključa red sobe (`SELECT … FOR UPDATE`) do kraja transakcije, pa se upisi u jednu sobu i zatvaranje runde izvršavaju jedan za drugim: od deset istovremenih predloga preko limita prolazi tačno onoliko koliko pravilo dozvoljava, a runda se zatvara jednom. Pravilo „jedan glas po rundi“ dodatno čuva baza (`UNIQUE(round_id, voter_id)`).
+
+Greške pravila (kôd i podaci iz domenske greške, jedno mesto: `lib/src/http/rule_errors.dart`):
+
+| Status | `code` | `data` | Kada |
+| --- | --- | --- | --- |
+| 400 | `bad_request` | | telo nije ispravno (npr. prazan naslov) |
+| 403 | `action_not_allowed` | `action`, `role` | uloga ne sme akciju (npr. moderator ne predlaže i ne glasa) |
+| 403 | `user_blocked` | | nalog je blokiran |
+| 404 | `room_not_found` | | soba ne postoji |
+| 409 | `already_voted_in_round` | `roundId` | slušalac je u ovoj rundi već glasao |
+| 422 | `too_many_active_proposals` | `activeCount`, `limit` | već ima 3 aktivna predloga |
+| 422 | `recently_played_song` | `title`, `artist`, `playedAt` | pesma je puštena u poslednjih sat |
+| 422 | `invalid_vote_target` | `proposalId` | predlog nije u glasanju (ili nije u ovoj sobi) |
+| 422 | `room_not_open` | `status` | soba je pauzirana ili zatvorena |
+| 422 | `round_closed` | `roundId` | glas za rundu koja je u međuvremenu zatvorena — klijent ponovo učitava sobu i vidi pobednika |
+
+Poziv mimo aplikacije (posle prijave kao `ana`, vidi primer gore):
+
+```sh
+H="authorization: Bearer $TOKEN"; J='content-type: application/json'
+# pesma puštena pre 20 min: 422 recently_played_song
+curl -s -X POST localhost:8080/rooms/r1/proposals -H "$H" -H "$J" -d '{"song":{"title":"Bohemian Rhapsody","artist":"Queen"}}'
+# treći aktivni predlog prolazi, četvrti: 422 too_many_active_proposals
+curl -s -X POST localhost:8080/rooms/r1/proposals -H "$H" -H "$J" -d '{"song":{"title":"Treca","artist":"Test"}}'
+curl -s -X POST localhost:8080/rooms/r1/proposals -H "$H" -H "$J" -d '{"song":{"title":"Cetvrta","artist":"Test"}}'
+# glas prolazi, drugi glas u istoj rundi: 409 already_voted_in_round
+ROUND=$(curl -s localhost:8080/rooms/r1 -H "$H" | sed 's/.*"round":{"id":"\([^"]*\)".*/\1/')
+curl -s -X POST localhost:8080/rooms/r1/votes -H "$H" -H "$J" -d "{\"roundId\":\"$ROUND\",\"proposalId\":\"p1\"}"
+curl -s -X POST localhost:8080/rooms/r1/votes -H "$H" -H "$J" -d "{\"roundId\":\"$ROUND\",\"proposalId\":\"p2\"}"
 ```
 
 ## Katalog pesama (spoljni servis)

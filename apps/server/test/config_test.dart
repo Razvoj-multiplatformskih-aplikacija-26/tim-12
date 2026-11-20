@@ -34,6 +34,17 @@ void main() {
     expect(config.port, 8080);
   });
 
+  test('ROUND_MINUTES nije obavezan (podrazumevano 10)', () {
+    expect(
+      Config.fromEnvironment(complete).roundLength,
+      const Duration(minutes: 10),
+    );
+    expect(
+      Config.fromEnvironment({...complete, 'ROUND_MINUTES': '3'}).roundLength,
+      const Duration(minutes: 3),
+    );
+  });
+
   test('prijavljuje sve promenljive koje nedostaju odjednom', () {
     expect(
       () => Config.fromEnvironment({'DB_HOST': 'db', 'DB_PORT': 'x'}),

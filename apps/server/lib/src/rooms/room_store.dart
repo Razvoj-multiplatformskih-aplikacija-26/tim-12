@@ -157,3 +157,98 @@ RoomStatus roomStatusFromCode(String code) => switch (code) {
   'closed' => const RoomClosed(),
   _ => throw FormatException('Nepoznato stanje sobe: $code'),
 };
+
+/// Zakljucava red sobe do kraja transakcije i vraca sobu, ili `null` kad ne
+/// postoji. Svi upisi u jednu sobu (i zatvaranje runde) idu jedan za drugim,
+/// pa izmedju provere pravila i upisa niko ne moze da se provuce. Zakljucava
+/// se jedna soba — ostale sobe rade nesmetano.
+Future<Room?> lockRoom(Session tx, RoomId roomId) async {
+  final rows = await tx.execute(
+    Sql.named('SELECT $_roomColumns FROM rooms WHERE id = @id FOR UPDATE'),
+    parameters: {'id': roomId.value},
+  );
+  return rows.isEmpty ? null : roomFromRow(rows.single);
+}
+
+/// Upisuje predlog (sa ID-jem, vremenom i stanjem iz [proposal]).
+Future<void> insertProposal(Session tx, Proposal proposal) async {
+  final song = proposal.song;
+  await tx.execute(
+    Sql.named(
+      'INSERT INTO proposals (id, room_id, title, artist, external_link, '
+      'duration_ms, cover_url, album, proposed_by, proposed_at, status, '
+      'played_at) VALUES (@id, @room, @title, @artist, @link, @duration, '
+      '@cover, @album, @by, @at, @status, @played)',
+    ),
+    parameters: {
+      'id': proposal.id.value,
+      'room': proposal.roomId.value,
+      'title': song.title,
+      'artist': song.artist,
+      'link': song.externalLink,
+      'duration': song.durationMs,
+      'cover': song.coverUrl,
+      'album': song.album,
+      'by': proposal.proposedBy.value,
+      'at': proposal.proposedAt,
+      'status': proposalStatusCode(proposal.status),
+      'played': switch (proposal.status) {
+        Played(:final playedAt) => playedAt,
+        _ => null,
+      },
+    },
+  );
+}
+
+/// Menja stanje predloga (bez podatka — `Played` ovde ne prolazi).
+Future<void> setProposalStatus(
+  Session tx,
+  ProposalId id,
+  ProposalStatus status,
+) async {
+  assert(status is! Played, 'pustanje nosi vreme; nije deo KT2');
+  await tx.execute(
+    Sql.named('UPDATE proposals SET status = @status WHERE id = @id'),
+    parameters: {'id': id.value, 'status': proposalStatusCode(status)},
+  );
+}
+
+/// Upisuje rundu.
+Future<void> insertRound(Session tx, Round round) async {
+  await tx.execute(
+    Sql.named(
+      'INSERT INTO rounds (id, room_id, starts_at, ends_at) '
+      'VALUES (@id, @room, @starts, @ends)',
+    ),
+    parameters: {
+      'id': round.id.value,
+      'room': round.roomId.value,
+      'starts': round.startsAt,
+      'ends': round.endsAt,
+    },
+  );
+}
+
+/// Upisuje glas. Baza je poslednja brana pravila „jedan glas po rundi“
+/// (`votes_one_per_round`): kada je prekrseno, vraca `false` umesto da baci.
+Future<bool> insertVote(Session tx, Vote vote) async {
+  try {
+    await tx.execute(
+      Sql.named(
+        'INSERT INTO votes (id, round_id, proposal_id, voter_id, cast_at) '
+        'VALUES (@id, @round, @proposal, @voter, @at)',
+      ),
+      parameters: {
+        'id': vote.id.value,
+        'round': vote.roundId.value,
+        'proposal': vote.proposalId.value,
+        'voter': vote.voterId.value,
+        'at': vote.castAt,
+      },
+    );
+    return true;
+  } on ServerException catch (e) {
+    if (e.constraintName == 'votes_one_per_round') return false;
+    rethrow;
+  }
+}
