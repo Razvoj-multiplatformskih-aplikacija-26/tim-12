@@ -12,6 +12,7 @@ environment:
 # Clanovi workspace-a: relativne putanje do paketa i aplikacija.
 workspace:
   - packages/domain
+  - packages/contract
   - packages/blocs
   - packages/ui
   - apps/mobile
