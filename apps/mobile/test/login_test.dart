@@ -100,18 +100,13 @@ void main() {
   });
 
   testWidgets('sacuvana sesija obnavlja prijavu bez kucanja', (tester) async {
+    // Prva prijava puni skladiste tokenom; AuthBloc se u testovima ne
+    // zatvara (close() visi u FakeAsync zoni widget testova — bloc sa
+    // asyncExpand transformatorom ceka isporuku broadcast dogadjaja koja
+    // trazi pump; u aplikaciji AuthBloc zivi dok aplikacija zivi).
     final repository = FakeAuthRepository();
     final store = FakeTokenStore();
-    final first = AuthBloc(repository: repository, tokenStore: store);
-    first.add(
-      const LoginRequested(
-        username: 'ana',
-        password: FakeAuthRepository.password,
-        app: AppTarget.mobile,
-      ),
-    );
-    await first.stream.firstWhere((state) => state is Authenticated);
-    await first.close();
+    await authenticatedBloc(repository: repository, store: store);
 
     final restored = AuthBloc(repository: repository, tokenStore: store)
       ..add(const SessionRestored());
