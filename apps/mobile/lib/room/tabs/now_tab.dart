@@ -4,6 +4,8 @@
 // platformama (samo one koje pesma ima; KT1: samo trenutna pesma ima
 // cover i prave linkove). Pobednik i lider ovde ne zive — to je Glasaj.
 // Bez svog Scaffold-a: zivi u skoljkci sobe kao i ostali tabovi.
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
@@ -44,10 +46,6 @@ class _NowView extends StatelessWidget {
       proposals: snapshot.proposals,
       now: now,
     );
-    final left = snapshot.round.endsAt.difference(now);
-    final time = left.isNegative
-        ? 'Runda je završena'
-        : 'još ${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
     // KT1: linkove ima samo trenutna pesma.
     final links = current?.song.platformLinks;
     final song = current?.song;
@@ -73,7 +71,7 @@ class _NowView extends StatelessWidget {
           textAlign: TextAlign.center,
         ),
         const SizedBox(height: 16),
-        _RoundBar(time: time),
+        _RoundBar(endsAt: snapshot.round.endsAt),
         if (links != null && links.isNotEmpty) ...[
           const SizedBox(height: 24),
           for (final entry in links.entries)
@@ -121,19 +119,57 @@ class _Cover extends StatelessWidget {
   }
 }
 
-/// Traka runde: samo odbrojavanje (zadrzano po dogovoru).
-class _RoundBar extends StatelessWidget {
-  const _RoundBar({required this.time});
+/// Traka runde: odbrojavanje koje tiktaka svake sekunde.
+///
+/// `endsAt` je trenutak sa servera; "sada" je sat telefona (isto kao pre —
+/// pogresan sat kvari samo prikaz, ne pravila). Tajmer se otkazuje kad se
+/// traka skloni sa ekrana i cim runda istekne, pa miruje na poruci.
+class _RoundBar extends StatefulWidget {
+  const _RoundBar({required this.endsAt});
 
-  final String time;
+  final DateTime endsAt;
 
   @override
-  Widget build(BuildContext context) => Card(
-        child: ListTile(
-          leading: const Icon(Icons.timer_outlined),
-          title: Text('Glasanje · $time'),
-        ),
-      );
+  State<_RoundBar> createState() => _RoundBarState();
+}
+
+class _RoundBarState extends State<_RoundBar> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    if (DateTime.now().isBefore(widget.endsAt)) {
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (!mounted) return;
+        if (!DateTime.now().isBefore(widget.endsAt)) {
+          _timer?.cancel();
+          _timer = null;
+        }
+        setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = widget.endsAt.difference(DateTime.now());
+    final time = left.isNegative
+        ? 'Runda je završena'
+        : 'još ${left.inMinutes}:${(left.inSeconds % 60).toString().padLeft(2, '0')}';
+    return Card(
+      child: ListTile(
+        leading: const Icon(Icons.timer_outlined),
+        title: Text('Glasanje · $time'),
+      ),
+    );
+  }
 }
 
 /// Veliko dugme ka platformi; neuspeh otvaranja je SnackBar na srpskom.

@@ -2,7 +2,8 @@
 //
 // U KT1 nema prijave ni servera: napravljena soba pravi se lokalno kroz
 // port (isti mehanizam kao ostale akcije), a pridruzivanje je izbor sa
-// liste postojecih soba. QR skeniranje i kod stizu tek u KT2 (`joinCode`);
+// liste postojecih soba. QR skeniranje i kod stizu tek u KT4 sa javnim
+// vebom (`joinCode` + URL sobe);
 // dugme i polje postoje kao vidljiv stub sa porukom, nista ne laze.
 // Ekran samo salje dogadjaje i crta stanje `RoomsBloc`-a.
 import 'package:flutter/material.dart';
@@ -158,7 +159,7 @@ class _CreateTabState extends State<_CreateTab> {
   }
 }
 
-/// Tab "Pridruzi se": lista postojecih soba + QR/kod (stub za KT2).
+/// Tab "Pridruzi se": lista postojecih soba + QR/kod (stub za KT4).
 class _JoinTab extends StatelessWidget {
   const _JoinTab({required this.rooms});
 
@@ -198,7 +199,7 @@ class _JoinTab extends StatelessWidget {
         builder: (context) => AlertDialog(
           title: const Text('QR kod'),
           content: const Text(
-            'Skeniranje QR koda stiže u KT2, sa prijavom i serverom. '
+            'Skeniranje QR koda stiže u KT4, sa javnim vebom (direktan link sobe). '
             'Za sad izaberi sobu sa liste.',
           ),
           actions: [
