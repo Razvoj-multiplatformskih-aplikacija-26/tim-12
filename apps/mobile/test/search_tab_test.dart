@@ -108,7 +108,10 @@ void main() {
     );
 
     await tester.fling(find.byType(TabBarView), const Offset(-300, 0), 800);
-    await tester.pumpAndSettle();
+    // Ograniceni pumpovi, ne pumpAndSettle: traka runde na Trenutno tabu
+    // tiktaka svake sekunde, pa se settle nikad ne bi desio.
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
     // Trenutno tab: hero cover + album + traka + dugmad (skroluj prvo:
     // dugmad su ispod folda i lenjo se montiraju).
     expect(find.text('Bohemian Rhapsody'), findsOneWidget);
@@ -136,5 +139,28 @@ void main() {
     await tester.pumpAndSettle();
     // Dva swipe-a desno: Trenutno → Glasaj → Pretraga.
     expect(find.widgetWithText(TextField, 'Pretraži pesme'), findsOneWidget);
+  });
+
+  testWidgets('odbrojavanje runde tiktaka svake sekunde', (tester) async {
+    await _start(tester, '/soba/r1');
+    await tester.fling(find.byType(TabBarView), const Offset(-300, 0), 800);
+    await tester.pump();
+    await tester.pump(const Duration(seconds: 1));
+
+    final before =
+        tester.widget<Text>(find.textContaining('Glasanje ·')).data!;
+    // Stvarno cekanje kroz runAsync: sat telefona (DateTime.now) ne prati
+    // vestacki sat testa, pa virtuelni pump sam ne bi pomerio labelu.
+    await tester.runAsync(
+      () => Future<void>.delayed(const Duration(seconds: 2)),
+    );
+    await tester.pump(const Duration(seconds: 1));
+    final after =
+        tester.widget<Text>(find.textContaining('Glasanje ·')).data!;
+    expect(after, isNot(before));
+
+    // Skloni tab sa ekrana da se tajmer otkaze pre kraja testa (inace
+    // visi kao pending timer i rusi teardown).
+    await tester.pumpWidget(Container());
   });
 }

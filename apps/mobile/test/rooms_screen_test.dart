@@ -64,7 +64,7 @@ void main() {
     expect(find.text('Naziv sobe ne sme biti prazan.'), findsOneWidget);
   });
 
-  testWidgets('QR dugme: stub dijalog za KT2', (tester) async {
+  testWidgets('QR dugme: stub dijalog za KT4', (tester) async {
     await _start(tester, '/sobe');
     await tester.pumpAndSettle();
     await tester.tap(find.text('Pridruži se'));
@@ -73,7 +73,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('QR kod'), findsOneWidget);
-    expect(find.textContaining('stiže u KT2'), findsOneWidget);
+    expect(find.textContaining('stiže u KT4'), findsOneWidget);
     await tester.tap(find.text('U redu'));
     await tester.pumpAndSettle();
     expect(find.text('QR kod'), findsNothing);

@@ -42,7 +42,7 @@ Pravilo se proverava na dva mesta, ali se piše na jednom: forma zove pravilo iz
 
 ## Demo podaci (`lib/data/demo_room.dart`)
 
-Dve demo sobe + lokalno napravljene; prelaz između njih je tab „Pridruži se“ na početnoj (`/sobe`). QR skeniranje stiže u KT2 (dugme pokazuje stub dijalog).
+Dve demo sobe + lokalno napravljene; prelaz između njih je tab „Pridruži se“ na početnoj (`/sobe`). QR skeniranje stiže u KT4 (dugme pokazuje stub dijalog).
 
 **„Prazna soba“** (`/soba/r2`) — otvorena runda bez ijednog predloga, za prazan prikaz.
 
@@ -64,7 +64,7 @@ Ekran glavnog toka (Glasaj tab) pokazuje sva 4 stanja: učitavanje (korak 1), po
 5. **Forma, pravilo pri unosu:** dno Pretrage → „ili unesi pesmu ručno“ → `/novi`. „Bohemian Rhapsody“ / „Queen“ → poruka ispod polja, dugme ugašeno. Isto i za „ bohemian rhapsody “ / „QUEEN“ (domen poredi normalizovano). „Kiša pada“ / „Partibrejkers“ prolazi.
 6. **Prazan prikaz:** početna → „Pridruži se“ → „Prazna soba“ → „Još nema predloga — budi prvi!“. Predlog iz Pretrage prebacuje ekran iz praznog prikaza u podatke.
 7. **Greška i oporavak:** meni ⋮ → „Simuliraj grešku“ → sledeći zahtev (npr. glas) pada → ekran greške → „Pokušaj ponovo“ vraća podatke.
-8. **Napravi sobu:** početna → naziv → ulaz u novu praznu sobu. Prazan naziv → SnackBar „Naziv sobe ne sme biti prazan.“. QR dugme → stub dijalog („stiže u KT2“).
+8. **Napravi sobu:** početna → naziv → ulaz u novu praznu sobu. Prazan naziv → SnackBar „Naziv sobe ne sme biti prazan.“. QR dugme → stub dijalog („stiže u KT4“).
 
 ## Ikonica
 
