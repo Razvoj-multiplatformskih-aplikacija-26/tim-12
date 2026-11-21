@@ -4,4 +4,5 @@
 library;
 
 export 'src/api_client.dart';
+export 'src/http_auth_repository.dart';
 export 'src/http_proposal_repository.dart';

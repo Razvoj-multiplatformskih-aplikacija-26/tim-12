@@ -2,19 +2,21 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
-import 'package:radioroom_mobile/data/demo_room.dart';
 import 'package:radioroom_mobile/data/fake_proposal_repository.dart';
 import 'package:radioroom_mobile/main.dart';
 import 'package:radioroom_mobile/router.dart';
 
+import 'fake_auth_repository.dart';
+
 const _delay = Duration(milliseconds: 10);
 
 Future<GoRouter> _start(WidgetTester tester, String location) async {
+  final auth = await authenticatedBloc();
   final router = createRouter(
     repository: FakeProposalRepository(delay: _delay),
-    currentUser: demoUser,
+    authBloc: auth,
   )..go(location);
-  await tester.pumpWidget(RadioRoomApp(router: router));
+  await tester.pumpWidget(RadioRoomApp(router: router, authBloc: auth));
   await tester.pump();
   await tester.pump(_delay);
   return router;

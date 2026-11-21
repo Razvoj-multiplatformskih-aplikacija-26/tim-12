@@ -6,14 +6,21 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:radioroom_backoffice/data/fake_moderation_repository.dart';
+import 'package:radioroom_backoffice/main.dart';
 import 'package:radioroom_backoffice/router.dart';
 
-Future<void> _pumpApp(WidgetTester tester, FakeModerationRepository repo) {
+import 'fake_auth_repository.dart';
+
+Future<void> _pumpApp(WidgetTester tester, FakeModerationRepository repo) async {
   tester.view.physicalSize = const Size(1200, 800);
   tester.view.devicePixelRatio = 1.0;
   addTearDown(tester.view.resetPhysicalSize);
-  return tester.pumpWidget(
-    MaterialApp.router(routerConfig: createRouter(repository: repo)),
+  final auth = await authenticatedBloc();
+  await tester.pumpWidget(
+    BackofficeApp(
+      router: createRouter(repository: repo, authBloc: auth),
+      authBloc: auth,
+    ),
   );
 }
 
