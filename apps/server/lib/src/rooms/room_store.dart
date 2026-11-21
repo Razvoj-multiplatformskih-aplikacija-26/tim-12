@@ -252,3 +252,27 @@ Future<bool> insertVote(Session tx, Vote vote) async {
     rethrow;
   }
 }
+
+/// Upisuje sobu.
+Future<void> insertRoom(Session tx, Room room) async {
+  await tx.execute(
+    Sql.named(
+      'INSERT INTO rooms (id, name, host_id, status) '
+      'VALUES (@id, @name, @host, @status)',
+    ),
+    parameters: {
+      'id': room.id.value,
+      'name': room.name,
+      'host': room.hostId.value,
+      'status': roomStatusCode(room.status),
+    },
+  );
+}
+
+/// Menja stanje sobe.
+Future<void> setRoomStatus(Session tx, RoomId id, RoomStatus status) async {
+  await tx.execute(
+    Sql.named('UPDATE rooms SET status = @status WHERE id = @id'),
+    parameters: {'id': id.value, 'status': roomStatusCode(status)},
+  );
+}

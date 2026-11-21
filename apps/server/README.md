@@ -87,6 +87,12 @@ Sve rute traže prijavu. Predlagač i glasač su uvek korisnik iz prijave — `p
 | `GET /rooms/:id` | `200 {"room", "round": {"id", "roomId", "startsAt", "endsAt"}, "proposals": [...], "votes": [...]}` — svi predlozi sobe (i pušteni) i glasovi tekuće runde |
 | `POST /rooms/:id/proposals` | telo `{"song": {"title", "artist", "externalLink"?, "durationMs"?, "coverUrl"?, "album"?}}` → `201` predlog u stanju `proposed`; u glasanje ulazi sa sledećom rundom |
 | `POST /rooms/:id/votes` | telo `{"roundId", "proposalId"}` → `201 {"id", "roundId", "proposalId", "voterId", "castAt"}` |
+| `POST /rooms` | host; telo `{"name"}` → `201` soba (`hostId` je korisnik iz prijave), odmah sa prvom rundom |
+| `POST /rooms/:id/proposals/:pid/withdraw` | slušalac povlači **svoj** predlog dok čeka ishod (`proposed` ili `in_voting`) → `200` predlog u stanju `removed` |
+| `POST /rooms/:id/proposals/:pid/remove` | samo moderator; bilo čiji nezavršen predlog (`proposed`, `in_voting`, `winner`) → `200` predlog u stanju `removed` |
+| `POST /rooms/:id/close` | samo moderator; otvorena ili pauzirana soba → `200` soba u stanju `closed` |
+
+**Ko šta vidi i menja.** Svaki prijavljeni korisnik (svaka uloga) vidi isti snimak sobe, i glasove sa `voterId` (neproziran ID, bez imena), jer klijent nad istim podacima pokreće ista domenska pravila. Bez prijave nema sadržaja. Tuđ zapis menja samo moderator: uklanja bilo čiji predlog dok nije završen (ne pušten, odbijen ili već uklonjen) i zatvara sobu; slušalac i host menjaju samo svoj predlog (povlačenje dok čeka ishod). Ko sme koju akciju je na jednom mestu u domenu (`permissions.dart`), a akcije su posebne rute (`…/remove`, `…/close`), ne `PATCH {status}` — pravilo je prelaz, klijent ne bira ciljno stanje.
 
 Predlog: `{"id", "roomId", "song", "proposedBy", "proposedAt", "status"}`, a pušten i `"playedAt"`. Na mreži su vremena ISO 8601 u UTC, a stanja tekstualni kodovi kao u bazi: predlog `proposed`, `in_voting`, `winner`, `played`, `rejected`, `removed`; soba `open`, `paused`, `closed`.
 
@@ -101,13 +107,19 @@ Greške pravila (kôd i podaci iz domenske greške, jedno mesto: `lib/src/http/r
 | 400 | `bad_request` | | telo nije ispravno (npr. prazan naslov) |
 | 403 | `action_not_allowed` | `action`, `role` | uloga ne sme akciju (npr. moderator ne predlaže i ne glasa) |
 | 403 | `user_blocked` | | nalog je blokiran |
+| 403 | `not_own_proposal` | `proposalId` | slušalac povlači tuđ predlog |
 | 404 | `room_not_found` | | soba ne postoji |
+| 404 | `proposal_not_found` | | predlog ne postoji u toj sobi |
 | 409 | `already_voted_in_round` | `roundId` | slušalac je u ovoj rundi već glasao |
 | 422 | `too_many_active_proposals` | `activeCount`, `limit` | već ima 3 aktivna predloga |
 | 422 | `recently_played_song` | `title`, `artist`, `playedAt` | pesma je puštena u poslednjih sat |
 | 422 | `invalid_vote_target` | `proposalId` | predlog nije u glasanju (ili nije u ovoj sobi) |
 | 422 | `room_not_open` | `status` | soba je pauzirana ili zatvorena |
 | 422 | `round_closed` | `roundId` | glas za rundu koja je u međuvremenu zatvorena — klijent ponovo učitava sobu i vidi pobednika |
+| 422 | `proposal_not_removable` | `proposalId` | predlog je već završen (pušten, odbijen, uklonjen) |
+| 422 | `proposal_not_withdrawable` | `proposalId` | predlog više ne čeka ishod (npr. pobednik) |
+| 422 | `room_not_closable` | | soba je već zatvorena |
+| 422 | `room_name_empty` | | naziv sobe je prazan |
 
 Poziv mimo aplikacije (posle prijave kao `ana`, vidi primer gore):
 
@@ -122,6 +134,12 @@ curl -s -X POST localhost:8080/rooms/r1/proposals -H "$H" -H "$J" -d '{"song":{"
 ROUND=$(curl -s localhost:8080/rooms/r1 -H "$H" | sed 's/.*"round":{"id":"\([^"]*\)".*/\1/')
 curl -s -X POST localhost:8080/rooms/r1/votes -H "$H" -H "$J" -d "{\"roundId\":\"$ROUND\",\"proposalId\":\"p1\"}"
 curl -s -X POST localhost:8080/rooms/r1/votes -H "$H" -H "$J" -d "{\"roundId\":\"$ROUND\",\"proposalId\":\"p2\"}"
+# akcija backoffice-a mimo aplikacije: 403 action_not_allowed (slušalac ne uklanja i ne zatvara)
+curl -s -X POST localhost:8080/rooms/r1/proposals/p6/remove -H "$H"
+curl -s -X POST localhost:8080/rooms/r1/close -H "$H"
+# tuđ predlog (markov p1): 403 not_own_proposal; svoj (p5): 200
+curl -s -X POST localhost:8080/rooms/r1/proposals/p1/withdraw -H "$H"
+curl -s -X POST localhost:8080/rooms/r1/proposals/p5/withdraw -H "$H"
 ```
 
 ## Katalog pesama (spoljni servis)
