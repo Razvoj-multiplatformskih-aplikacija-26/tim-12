@@ -25,6 +25,8 @@ final class SongDto {
   final String? externalLink;
   final String? coverUrl;
 
+  /// Opciono polje moze da izostane ili bude `null`; pogresan tip je
+  /// [FormatException], ne tiho izostavljeno polje.
   factory SongDto.fromJson(Object? json) {
     if (json is! Map || json['title'] is! String || json['artist'] is! String) {
       throw const FormatException('SongDto mora imati title/artist');
@@ -32,10 +34,10 @@ final class SongDto {
     return SongDto(
       title: json['title'] as String,
       artist: json['artist'] as String,
-      album: _string(json['album']),
-      durationMs: json['durationMs'] is int ? json['durationMs'] as int : null,
-      externalLink: _string(json['externalLink']),
-      coverUrl: _string(json['coverUrl']),
+      album: _optional<String>(json, 'album'),
+      durationMs: _optional<int>(json, 'durationMs'),
+      externalLink: _optional<String>(json, 'externalLink'),
+      coverUrl: _optional<String>(json, 'coverUrl'),
     );
   }
 
@@ -226,4 +228,9 @@ final class CatalogSearchResponse {
   };
 }
 
-String? _string(Object? value) => value is String ? value : null;
+/// Opciono polje [key] tipa [T]; baca kad postoji, a pogresnog je tipa.
+T? _optional<T extends Object>(Map<Object?, Object?> json, String key) {
+  final value = json[key];
+  if (value == null || value is T) return value as T?;
+  throw FormatException('SongDto.$key ima pogresan tip');
+}

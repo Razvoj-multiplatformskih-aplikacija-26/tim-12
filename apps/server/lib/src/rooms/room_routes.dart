@@ -18,14 +18,17 @@
 // Odbaceno: samo zbir glasova — menja port Bloc-a, pa Bloc vise ne bi bio
 // isti nad laznim podacima i nad serverom.
 //
-// Na mrezi: vremena ISO 8601 u UTC, stanja tekstualni kodovi kao u bazi.
-// Predlozi sobe idu celi, bez stranica — soba ima desetine predloga.
+// Na mrezi: tela zahteva i odgovora su DTO-i iz `packages/contract`, a
+// prevod domen <-> DTO je `packages/mapping` (`toDto()`, `toDomain()`) —
+// isti prevod koji koriste klijenti. Predlozi sobe idu celi, bez stranica —
+// soba ima desetine predloga.
 import 'package:postgres/postgres.dart' show Session, SessionExecutor;
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 import 'package:relic/relic.dart';
 
 import '../auth/auth.dart';
-import '../catalog/catalog_routes.dart' show songJson;
 import '../http/json.dart';
 import '../http/rule_errors.dart';
 import 'room_store.dart';
@@ -62,19 +65,31 @@ final class RoomRoutes {
 
   Future<Response> list(Request request) async {
     final rooms = await db.run(loadRooms);
-    return jsonResponse({'rooms': rooms.map(roomJson).toList()});
+    return jsonResponse(
+      RoomListResponse(rooms: [for (final room in rooms) room.toDto()])
+          .toJson(),
+    );
   }
 
   Future<Response> show(Request request) => _inRoom(
     request,
-    (tx, view, now) async => jsonResponse(roomViewJson(view)),
+    (tx, view, now) async => jsonResponse(
+      roomSnapshotToDto(
+        room: view.room,
+        round: view.round,
+        proposals: view.proposals,
+        votes: view.votes,
+      ).toJson(),
+    ),
   );
 
-  /// Telo: `{song: {title, artist, externalLink?, durationMs?, coverUrl?,
-  /// album?}}`. Predlog ulazi u glasanje sa sledecom rundom.
+  /// Telo: `CreateProposalRequest` (`{song: {title, artist, externalLink?,
+  /// durationMs?, coverUrl?, album?}}`). Predlog ulazi u glasanje sa
+  /// sledecom rundom.
   Future<Response> propose(Request request) async {
-    final song = songFromJson((await readJsonObject(request))?['song']);
-    if (song == null) return errorResponse(400, 'bad_request');
+    final body = await readRequest(request, CreateProposalRequest.fromJson);
+    final song = body == null ? null : validSong(body.song);
+    if (song == null) return errorResponse(ErrorCodes.badRequest);
     final user = request.currentUser;
 
     return _inRoom(request, (tx, view, now) async {
@@ -95,19 +110,17 @@ final class RoomRoutes {
         status: const Proposed(),
       );
       await insertProposal(tx, proposal);
-      return jsonResponse(proposalJson(proposal), status: 201);
+      return jsonResponse(proposal.toDto().toJson(), status: 201);
     });
   }
 
-  /// Telo: `{roundId, proposalId}`. `roundId` je runda za koju klijent misli
-  /// da glasa — ako je u medjuvremenu zatvorena, glas je zakasneo.
+  /// Telo: `CastVoteRequest` (`{roundId, proposalId}`). `roundId` je runda
+  /// za koju klijent misli da glasa — ako je u medjuvremenu zatvorena, glas
+  /// je zakasneo.
   Future<Response> vote(Request request) async {
-    final body = await readJsonObject(request);
-    final roundId = body?['roundId'];
-    final proposalId = body?['proposalId'];
-    if (roundId is! String || proposalId is! String) {
-      return errorResponse(400, 'bad_request');
-    }
+    final body = await readRequest(request, CastVoteRequest.fromJson);
+    if (body == null) return errorResponse(ErrorCodes.badRequest);
+    final CastVoteRequest(:roundId, :proposalId) = body;
     final user = request.currentUser;
 
     return _inRoom(request, (tx, view, now) async {
@@ -149,15 +162,17 @@ final class RoomRoutes {
           AlreadyVotedInRound(voterId: user.id, roundId: view.round.id),
         );
       }
-      return jsonResponse(voteJson(vote), status: 201);
+      return jsonResponse(vote.toDto().toJson(), status: 201);
     });
   }
 
-  /// Telo: `{name}`. Sobu otvara host; host je korisnik iz prijave, a soba
-  /// odmah dobija prvu rundu (soba bez runde ne postoji).
+  /// Telo: `CreateRoomRequest` (`{name}`). Sobu otvara host; host je
+  /// korisnik iz prijave, a soba odmah dobija prvu rundu (soba bez runde
+  /// ne postoji).
   Future<Response> create(Request request) async {
-    final name = (await readJsonObject(request))?['name'];
-    if (name is! String) return errorResponse(400, 'bad_request');
+    final body = await readRequest(request, CreateRoomRequest.fromJson);
+    if (body == null) return errorResponse(ErrorCodes.badRequest);
+    final name = body.name;
     final user = request.currentUser;
 
     final violation = firstViolation([
@@ -180,7 +195,7 @@ final class RoomRoutes {
         ),
       );
     });
-    return jsonResponse(roomJson(room), status: 201);
+    return jsonResponse(room.toDto().toJson(), status: 201);
   }
 
   /// Moderator zatvara sobu; zatvorena soba ne prima predloge ni glasove.
@@ -196,7 +211,7 @@ final class RoomRoutes {
 
       final closed = view.room.withStatus(const RoomClosed());
       await setRoomStatus(tx, closed.id, closed.status);
-      return jsonResponse(roomJson(closed));
+      return jsonResponse(closed.toDto().toJson());
     });
   }
 
@@ -228,7 +243,7 @@ final class RoomRoutes {
   Future<Response> _markRemoved(Session tx, Proposal proposal) async {
     final removed = proposal.withStatus(const Removed());
     await setProposalStatus(tx, removed.id, removed.status);
-    return jsonResponse(proposalJson(removed));
+    return jsonResponse(removed.toDto().toJson());
   }
 
   /// Kao [_inRoom], za predlog iz putanje (`:pid`) u toj sobi; predlog van
@@ -242,7 +257,7 @@ final class RoomRoutes {
       final proposal = view.proposals
           .where((p) => p.id.value == proposalId)
           .firstOrNull;
-      if (proposal == null) return errorResponse(404, 'proposal_not_found');
+      if (proposal == null) return errorResponse(ErrorCodes.proposalNotFound);
       return action(tx, proposal);
     });
   }
@@ -257,7 +272,7 @@ final class RoomRoutes {
     final roomId = RoomId(request.rawPathParameters[#id]!);
     return db.runTx((tx) async {
       if (await lockRoom(tx, roomId) == null) {
-        return errorResponse(404, 'room_not_found');
+        return errorResponse(ErrorCodes.roomNotFound);
       }
       final now = _clock();
       var view = (await loadRoomView(tx, roomId))!;
@@ -274,14 +289,13 @@ final class RoomRoutes {
   }
 }
 
-/// Pesma iz tela zahteva, ili `null` kad oblik ne valja (obavezni naslov i
-/// izvodjac, ostalo opciono).
-Song? songFromJson(Object? json) {
-  if (json is! Map<String, Object?>) return null;
-  String? text(String key, {required bool required}) {
-    final value = json[key];
-    if (value == null && !required) return null;
-    if (value is! String) throw const FormatException();
+/// Pesma iz tela zahteva, ili `null` kad polja ne valjaju: naslov i
+/// izvodjac su obavezni, svaki tekst je posle `trim` neprazan i najvise
+/// [maxSongFieldLength] znakova, trajanje je pozitivno. Tipove polja je vec
+/// proverio `SongDto.fromJson`.
+Song? validSong(SongDto dto) {
+  String? text(String? value) {
+    if (value == null) return null;
     final trimmed = value.trim();
     if (trimmed.isEmpty || trimmed.length > maxSongFieldLength) {
       throw const FormatException();
@@ -289,62 +303,18 @@ Song? songFromJson(Object? json) {
     return trimmed;
   }
 
+  final duration = dto.durationMs;
+  if (duration != null && duration <= 0) return null;
   try {
-    final duration = json['durationMs'];
-    if (duration != null && (duration is! int || duration <= 0)) return null;
     return Song(
-      title: text('title', required: true)!,
-      artist: text('artist', required: true)!,
-      externalLink: text('externalLink', required: false),
-      coverUrl: text('coverUrl', required: false),
-      album: text('album', required: false),
-      durationMs: duration as int?,
+      title: text(dto.title)!,
+      artist: text(dto.artist)!,
+      externalLink: text(dto.externalLink),
+      coverUrl: text(dto.coverUrl),
+      album: text(dto.album),
+      durationMs: duration,
     );
   } on FormatException {
     return null;
   }
 }
-
-Map<String, Object?> roomViewJson(RoomView view) => {
-  'room': roomJson(view.room),
-  'round': roundJson(view.round),
-  'proposals': view.proposals.map(proposalJson).toList(),
-  'votes': view.votes.map(voteJson).toList(),
-};
-
-// Privremeno rucno, kao `userJson` i `songJson`, dok ne stigne
-// `packages/contract`.
-
-Map<String, Object?> roomJson(Room room) => {
-  'id': room.id.value,
-  'name': room.name,
-  'hostId': room.hostId.value,
-  'status': roomStatusCode(room.status),
-};
-
-Map<String, Object?> roundJson(Round round) => {
-  'id': round.id.value,
-  'roomId': round.roomId.value,
-  'startsAt': _time(round.startsAt),
-  'endsAt': _time(round.endsAt),
-};
-
-Map<String, Object?> proposalJson(Proposal proposal) => {
-  'id': proposal.id.value,
-  'roomId': proposal.roomId.value,
-  'song': {...songJson(proposal.song), 'coverUrl': proposal.song.coverUrl},
-  'proposedBy': proposal.proposedBy.value,
-  'proposedAt': _time(proposal.proposedAt),
-  'status': proposalStatusCode(proposal.status),
-  if (proposal.status case Played(:final playedAt)) 'playedAt': _time(playedAt),
-};
-
-Map<String, Object?> voteJson(Vote vote) => {
-  'id': vote.id.value,
-  'roundId': vote.roundId.value,
-  'proposalId': vote.proposalId.value,
-  'voterId': vote.voterId.value,
-  'castAt': _time(vote.castAt),
-};
-
-String _time(DateTime time) => time.toUtc().toIso8601String();

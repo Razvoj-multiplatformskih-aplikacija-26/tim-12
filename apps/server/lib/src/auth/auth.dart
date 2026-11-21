@@ -7,7 +7,9 @@
 // Svaka ruta trazi prijavu, osim onih u [publicPaths] — nova ruta je
 // zasticena sama od sebe, ne moze se zaboraviti.
 import 'package:postgres/postgres.dart' show Session;
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 import 'package:relic/relic.dart';
 
 import '../http/json.dart';
@@ -34,16 +36,16 @@ Middleware requireSession(SessionStore sessions) =>
       if (publicPaths.contains(request.url.path)) return next(request);
 
       final token = _bearerToken(request);
-      if (token == null) return errorResponse(401, 'unauthenticated');
+      if (token == null) return errorResponse(ErrorCodes.unauthenticated);
 
       switch (await sessions.lookup(token)) {
         case UnknownSession():
-          return errorResponse(401, 'unauthenticated');
+          return errorResponse(ErrorCodes.unauthenticated);
         case ExpiredSession():
-          return errorResponse(401, 'session_expired');
+          return errorResponse(ErrorCodes.sessionExpired);
         case ActiveSession(:final user):
           // Blokiran tokom prijave: prijava vise ne vazi ni za citanje.
-          if (user.blocked) return errorResponse(403, 'user_blocked');
+          if (user.blocked) return errorResponse(ErrorCodes.userBlocked);
           _currentUser[request] = user;
           return next(request);
       }
@@ -69,41 +71,37 @@ final class AuthRoutes {
       ..get('/auth/me', me);
   }
 
-  /// Telo: `{username, password, app}`; `app` je `mobile` (podrazumevano)
-  /// ili `backoffice`. Server primenjuje isto domensko pravilo kao klijent
-  /// (`checkCanUseMobile` / `checkCanUseBackoffice`) i isti kod greske.
+  /// Telo: `LoginRequest` (`{username, password, app}`); `app` je `mobile`
+  /// (podrazumevano) ili `backoffice`. Server primenjuje isto domensko
+  /// pravilo kao klijent (`checkCanUseMobile` / `checkCanUseBackoffice`) i
+  /// isti kod greske.
   Future<Response> login(Request request) async {
-    final body = await readJsonObject(request);
-    final username = body?['username'];
-    final password = body?['password'];
-    final app = body?['app'] ?? 'mobile';
-    if (username is! String ||
-        password is! String ||
-        (app != 'mobile' && app != 'backoffice')) {
-      return errorResponse(400, 'bad_request');
-    }
+    final body = await readRequest(request, LoginRequest.fromJson);
+    if (body == null) return errorResponse(ErrorCodes.badRequest);
 
-    final found = await findForLogin(db, username.trim());
+    final found = await findForLogin(db, body.username.trim());
     if (found == null) {
-      hasher.verify(password, _dummyHash);
-      return errorResponse(401, 'invalid_credentials');
+      hasher.verify(body.password, _dummyHash);
+      return errorResponse(ErrorCodes.invalidCredentials);
     }
     final (user, hash) = found;
-    if (!hasher.verify(password, hash)) {
-      return errorResponse(401, 'invalid_credentials');
+    if (!hasher.verify(body.password, hash)) {
+      return errorResponse(ErrorCodes.invalidCredentials);
     }
 
-    final outcome = app == 'backoffice'
+    final outcome = body.app == AppTarget.backoffice
         ? checkCanUseBackoffice(user: user)
         : checkCanUseMobile(user: user);
     if (outcome.error case final error?) return ruleErrorResponse(error);
 
     final (token, expiresAt) = await sessions.create(user.id);
-    return jsonResponse({
-      'token': token,
-      'expiresAt': expiresAt.toIso8601String(),
-      'user': userJson(user),
-    });
+    return jsonResponse(
+      LoginResponse(
+        token: token,
+        expiresAt: expiresAt,
+        user: user.toDto(),
+      ).toJson(),
+    );
   }
 
   /// Odjava brise prijavu iz koje je poziv stigao.
@@ -114,14 +112,9 @@ final class AuthRoutes {
 
   /// Ko sam ja — klijent po ovome posle ponovnog pokretanja zna da li
   /// sacuvana prijava jos vazi.
-  Response me(Request request) => jsonResponse(userJson(request.currentUser));
+  Response me(Request request) =>
+      jsonResponse(request.currentUser.toDto().toJson());
 }
-
-Map<String, Object?> userJson(User user) => {
-  'id': user.id.value,
-  'displayName': user.displayName,
-  'role': user.role.name,
-};
 
 String? _bearerToken(Request request) {
   final header = request.headers['authorization']?.firstOrNull;

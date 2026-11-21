@@ -90,6 +90,18 @@ void main() {
       expect(full.toJson().keys, isNot(contains('coverUrl')));
     });
 
+    test('SongDto baca za pogresan tip opcionog polja', () {
+      expect(
+        () => SongDto.fromJson({'title': 'T', 'artist': 'A', 'album': 5}),
+        throwsFormatException,
+      );
+      expect(
+        () =>
+            SongDto.fromJson({'title': 'T', 'artist': 'A', 'durationMs': '3'}),
+        throwsFormatException,
+      );
+    });
+
     test('ProposalDto krug json<->dto, playedAt samo uz played', () {
       final json = {
         'id': 'p1',

@@ -7,7 +7,9 @@
 import 'dart:async';
 import 'dart:io';
 
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 import 'package:relic/relic.dart';
 
 import '../http/json.dart';
@@ -35,7 +37,7 @@ final class CatalogRoutes {
   Future<Response> search(Request request) async {
     final query = request.url.queryParameters['q']?.trim() ?? '';
     if (query.isEmpty || query.length > maxQueryLength) {
-      return errorResponse(400, 'bad_request');
+      return errorResponse(ErrorCodes.badRequest);
     }
 
     final List<Song> songs;
@@ -45,18 +47,11 @@ final class CatalogRoutes {
       // CatalogUnavailable, istek roka ili bilo koja greska servisa: razlog
       // ide u log servera, klijent dobija samo kod.
       stderr.writeln('Katalog nije dostupan: $error');
-      return errorResponse(503, 'catalog_unavailable');
+      return errorResponse(ErrorCodes.catalogUnavailable);
     }
-    return jsonResponse({'songs': songs.map(songJson).toList()});
+    return jsonResponse(
+      CatalogSearchResponse(songs: [for (final song in songs) song.toDto()])
+          .toJson(),
+    );
   }
 }
-
-/// Pesma na mrezi. Privremeno rucno, kao `userJson`, dok ne stigne
-/// `packages/contract`.
-Map<String, Object?> songJson(Song song) => {
-  'title': song.title,
-  'artist': song.artist,
-  'album': song.album,
-  'durationMs': song.durationMs,
-  'externalLink': song.externalLink,
-};
