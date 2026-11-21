@@ -56,6 +56,14 @@ ApiError apiErrorFromRule(ProposalRuleError error) => switch (error) {
     code: ErrorCodes.proposalNotWithdrawable,
     data: {'proposalId': proposalId.value},
   ),
+  RoomNotOpen(:final status) => ApiError(
+    code: ErrorCodes.roomNotOpen,
+    data: {'status': _roomStatusToCode(status)},
+  ),
+  RoundClosed(:final roundId) => ApiError(
+    code: ErrorCodes.roundClosed,
+    data: {'roundId': roundId.value},
+  ),
 };
 
 /// Tip greske iz `{code, data}` za prikaz poruke. `null` znaci: nepoznat kôd
@@ -122,6 +130,14 @@ ProposalRuleError? ruleErrorFromApi(ApiError error) {
       return proposalId == null
           ? null
           : ProposalNotWithdrawable(proposalId: ProposalId(proposalId));
+    case ErrorCodes.roomNotOpen:
+      final status = _roomStatusFromCode(data['status']);
+      return status == null ? null : RoomNotOpen(status: status);
+    case ErrorCodes.roundClosed:
+      final roundId = _id(data, 'roundId');
+      return roundId == null
+          ? null
+          : RoundClosed(roundId: RoundId(roundId));
     default:
       return null;
   }
@@ -132,3 +148,18 @@ String? _id(Map<String, Object?> data, String key) {
   final value = data[key];
   return value is String && value.isNotEmpty ? value : null;
 }
+
+/// Kod stanja sobe u tip (`open`/`paused`/`closed`); `null` za nepoznato.
+RoomStatus? _roomStatusFromCode(Object? code) => switch (code) {
+  'open' => const RoomOpen(),
+  'paused' => const RoomPaused(),
+  'closed' => const RoomClosed(),
+  _ => null,
+};
+
+/// Tip stanja sobe u kod za `{code, data}` (isti kodovi kao server).
+String _roomStatusToCode(RoomStatus status) => switch (status) {
+  RoomOpen() => 'open',
+  RoomPaused() => 'paused',
+  RoomClosed() => 'closed',
+};

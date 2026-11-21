@@ -81,6 +81,8 @@ abstract final class ErrorCodes {
   static const actionNotAllowed = 'action_not_allowed';
   static const notOwnProposal = 'not_own_proposal';
   static const proposalNotWithdrawable = 'proposal_not_withdrawable';
+  static const roomNotOpen = 'room_not_open';
+  static const roundClosed = 'round_closed';
 
   /// Zamena za nepoznat kôd ili odgovor bez koda.
   static const unknown = 'unknown_error';
@@ -103,6 +105,8 @@ abstract final class ErrorCodes {
     actionNotAllowed,
     notOwnProposal,
     proposalNotWithdrawable,
+    roomNotOpen,
+    roundClosed,
     unknown,
   };
 }

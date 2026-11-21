@@ -33,6 +33,8 @@ void main() {
           ErrorCodes.notOwnProposal,
       const ProposalNotWithdrawable(proposalId: ProposalId('p1')):
           ErrorCodes.proposalNotWithdrawable,
+      const RoomNotOpen(status: RoomPaused()): ErrorCodes.roomNotOpen,
+      const RoundClosed(roundId: RoundId('rd1')): ErrorCodes.roundClosed,
     };
 
     for (final entry in cases.entries) {
@@ -50,6 +52,31 @@ void main() {
     expect(back, isA<TooManyActiveProposals>());
     expect((back as TooManyActiveProposals).activeCount, 3);
     expect(back.limit, 3);
+  });
+
+  test('krug room_not_open i round_closed cuva stanje i rundu', () {
+    final backOpen = ruleErrorFromApi(
+      apiErrorFromRule(const RoomNotOpen(status: RoomClosed())),
+    );
+    expect(backOpen, isA<RoomNotOpen>());
+    expect((backOpen as RoomNotOpen).status, isA<RoomClosed>());
+
+    final backRound = ruleErrorFromApi(
+      apiErrorFromRule(const RoundClosed(roundId: RoundId('rd9'))),
+    );
+    expect(backRound, isA<RoundClosed>());
+    expect((backRound as RoundClosed).roundId, const RoundId('rd9'));
+
+    // Osteceno stanje sobe daje null.
+    expect(
+      ruleErrorFromApi(
+        const ApiError(
+          code: ErrorCodes.roomNotOpen,
+          data: {'status': 'nepoznato'},
+        ),
+      ),
+      isNull,
+    );
   });
 
   test('nepoznat kôd daje null (stara verzija ne pada)', () {
