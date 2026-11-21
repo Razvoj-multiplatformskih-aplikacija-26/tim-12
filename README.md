@@ -71,7 +71,21 @@ Javne sobe, pesma koja se trenutno pušta, istorija puštenih pesama i nedeljne 
 
 ## Pokretanje
 
-Uslov: Flutter SDK (Dart ≥ 3.10). Provereno sa Flutter 3.47.8.
+Uslov: Flutter SDK (Dart ≥ 3.10, provereno sa Flutter 3.47.8) i Docker (za bazu i server).
+
+### Ceo sistem (KT2): baza + server + aplikacije
+
+```sh
+cp .env.example .env
+docker compose up --build   # baza (PostgreSQL) + server; migracije i demo podaci sami
+curl localhost:8080/health  # -> {"status":"ok"}
+```
+
+- Gašenje: `Ctrl+C` ili `docker compose down`; brisanje baze (ponovo prazna, pa ponovo demo podaci): `docker compose down -v`.
+- Baza je na računaru izložena na portu **5433** (ne 5432), da ne smeta lokalnom Postgres-u; server sluša na **8080**.
+- Razvojna varijanta (bez Docker build-a servera): `docker compose up -d db` (samo baza), pa `cd apps/server && dart run bin/server.dart` — server sam čita `../../.env`.
+
+### Aplikacije nad serverom
 
 ```sh
 flutter pub get          # iz korena: resava sve pakete odjednom (jedan pubspec.lock)
@@ -82,4 +96,56 @@ cd ../backoffice
 flutter run              # backoffice (Linux/macOS desktop; za veb: flutter run -d chrome)
 ```
 
+Podrazumevano aplikacije gađaju `http://localhost:8080`. Za drugu adresu (telefon na istoj mreži, udaljeni server) bez editovanja koda:
+
+```sh
+flutter run --dart-define=API_BASE_URL=http://192.168.1.5:8080
+```
+
 Za veb pokretanje potreban je Chrome/Chromium (`CHROME_EXECUTABLE` pokazuje na njega ako nije na podrazumevanoj putanji). Android emulator zahteva Android SDK (uputstvo: `flutter doctor`). macOS desktop i iOS simulator zahtevaju Xcode 15 ili noviji.
+
+Bez servera aplikacije rade protiv ugrađenih lažnih podataka samo u testovima; na pokretanju uvek zovu server i bez njega pokazuju poruku o nedostupnosti umesto večnog učitavanja.
+
+## Demo nalozi (KT2)
+
+Lozinka za sve naloge: `demo1234` (u bazi su samo bcrypt heševi). Prijava preživljava restart (token u bezbednom skladištu), ističe posle 60 minuta, briše se odjavom.
+
+| Korisničko ime | Uloga | Aplikacija |
+| --- | --- | --- |
+| ana, marko, jelena, nikola, sara | slušalac | mobilna |
+| spamer | slušalac, blokiran (odbija ga i prijava) | — |
+| luka, mila | host | mobilna |
+| moderator | moderator | backoffice (slušaoca odbija rečima) |
+
+Sobe iz demo podataka: `r1` „Petak u Studentskom" (puna, sva stanja predloga), `r2` „Prazna soba" (prazan prikaz), plus pauzirana i zatvorena soba za backoffice tok.
+
+## Pravila i ko ih čuva (KT2)
+
+Pravila žive samo u `packages/domain` — klijent i server ih pozivaju, niko ih ne ponavlja. Klijent proverava formu pre poziva (brza povratna poruka), server proverava isto pravilo pre upisa (konačna odluka, radi i pri istovremenim pozivima), baza čuva ono što se ne da trkom (UNIQUE glas po rundi).
+
+| Pravilo | Forma (klijent) | Upis (server) | Baza |
+| --- | --- | --- | --- |
+| 1 glas po rundi | `checkSingleVotePerRound` | isto + 409 na trku | UNIQUE `(round_id, voter_id)` |
+| max 3 aktivna predloga | `checkMaxActiveProposals` | isto | — |
+| nije puštena u poslednji sat | `checkNotRecentlyPlayed` | isto (server ubrizgava pravo vreme) | — |
+| glas samo za predlog u glasanju | `checkVoteTarget` | isto + provera da predlog pripada sobi | statusi kao CHECK |
+| glas samo za tekuću rundu | — (nema šta da proveri unapred) | `checkCurrentRound` → `round_closed` | — |
+| samo otvorena soba prima novo | prikaz stanja | `checkRoomOpen` → `room_not_open` | status CHECK |
+| svoj predlog se povlači sam | — | `checkCanWithdraw` (+ `not_own_proposal`) | — |
+| moderator uklanja/zatvara | — | `checkAllowed` + `checkRemovable` | — |
+| uloga → aplikacija | poruka iz koda | `checkCanUseMobile` / `checkCanUseBackoffice` | role CHECK |
+
+Odbijen poziv nosi kod i podatke pravila (`{code, data}`, bez teksta); poruku na srpskom pravi klijent iz koda (`packages/ui`), nepoznat kod pada na opštu poruku umesto da sruši staru verziju. Klijent posle odbijanja automatski ponovo učitava sobu, pa zakasneli klijent odmah vidi sveže stanje (pobednika i novu rundu).
+
+## Ugovor klijent–server (KT2)
+
+Paket `packages/contract` (čist Dart, radi na VM-u i u pregledaču): `ApiError{code, data}`, DTO zahteva/odgovora, prevod domen↔ugovor na jednom mestu. Server rute (`apps/server`, Relic 1.2.0): `GET /health`, `POST /auth/login|logout`, `GET /auth/me`, `GET /rooms`, `GET /rooms/:id`, `POST /rooms`, `POST /rooms/:id/proposals|votes|close`, `POST /rooms/:id/proposals/:pid/remove|withdraw`. Prijava ide u `Authorization: Bearer` headeru — server identitet čita samo iz prijave, nikad iz tela zahteva.
+
+## Odluke para (KT2)
+
+- Sesije su neprozirni tokeni (32 slučajna bajta, u bazi samo SHA-256 heš) sa TTL-om — odbačen JWT jer se ne može opozvati pre isteka; istekle sesije se brišu lenjo pri lookup-u.
+- Akcije su posebne rute (`…/remove`, `…/close`), a ne `PATCH {status}`: pravilo je prelaz stanja, klijent ne bira ciljno stanje.
+- Prevod ugovor↔domen živi unutar `packages/contract` (nema posebnog `mapping` paketa): jedno mesto za oba smera.
+- Posle odbijanja klijent radi automatski reload (bez pritiska "Pokušaj ponovo"): odbrana pokazuje razlog + sveže stanje u jednom koraku.
+- Token stoji u bezbednom skladištu platforme (`flutter_secure_storage`), lozinka se nigde ne čuva; lažni repozitorijumi ostaju u repu za demo bez servera.
+- Odbačeno: zbir glasova umesto pojedinačnih u snimku sobe — menjao bi port Bloc-a, pa Bloc više ne bi bio isti nad lažnim podacima i nad serverom.
