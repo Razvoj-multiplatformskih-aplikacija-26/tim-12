@@ -1,11 +1,11 @@
 // DTO sobe, runde i snimka sobe — oblik odgovora za rute soba.
 //
-// Snimak sobe (`RoomSnapshotDto`) odgovara portu u `blocs`
-// (`RoomSnapshot`): soba + tekuca runda + svi predlozi + glasovi tekuce
-// runde. Prevod u domenske tipove je ovde, da HTTP sloj ne ponavlja oblik.
-import 'package:radioroom_domain/radioroom_domain.dart';
-
+// Snimak sobe (`RoomSnapshotDto`) nosi sve sto ekranu glavnog toka treba:
+// soba + tekuca runda + svi predlozi + glasovi tekuce runde. Prevod u
+// domenske tipove (i u port `RoomSnapshot` iz `blocs`) je u
+// `packages/mapping`.
 import 'proposal_dto.dart';
+import 'wire_codes.dart';
 
 /// Soba kao odgovor servera.
 final class RoomDto {
@@ -16,54 +16,54 @@ final class RoomDto {
     required this.status,
   });
 
-  final RoomId id;
+  final String id;
   final String name;
-  final UserId hostId;
-  final RoomStatus status;
+  final String hostId;
+
+  /// Jedan od [RoomStatusCodes].
+  final String status;
 
   factory RoomDto.fromJson(Map<String, Object?> json) {
     final id = json['id'];
     final name = json['name'];
     final hostId = json['hostId'];
-    final status = switch (json['status']) {
-      'open' => const RoomOpen(),
-      'paused' => const RoomPaused(),
-      'closed' => const RoomClosed(),
-      _ => null,
-    };
+    final status = json['status'];
     if (id is! String || name is! String || hostId is! String) {
       throw const FormatException('RoomDto trazi id/name/hostId');
     }
-    if (status == null) {
-      throw FormatException('RoomDto.status nepoznat: ${json['status']}');
+    if (status is! String || !RoomStatusCodes.all.contains(status)) {
+      throw FormatException('RoomDto.status nepoznat: $status');
     }
-    return RoomDto(
-      id: RoomId(id),
-      name: name,
-      hostId: UserId(hostId),
-      status: status,
+    return RoomDto(id: id, name: name, hostId: hostId, status: status);
+  }
+
+  Map<String, Object?> toJson() => {
+    'id': id,
+    'name': name,
+    'hostId': hostId,
+    'status': status,
+  };
+}
+
+/// Lista soba: `{rooms: [...]}`.
+final class RoomListResponse {
+  const RoomListResponse({required this.rooms});
+
+  final List<RoomDto> rooms;
+
+  factory RoomListResponse.fromJson(Map<String, Object?> json) {
+    final rooms = json['rooms'];
+    if (rooms is! List) {
+      throw const FormatException('RoomListResponse trazi rooms');
+    }
+    return RoomListResponse(
+      rooms: [for (final room in rooms) RoomDto.fromJson(_map(room))],
     );
   }
 
   Map<String, Object?> toJson() => {
-    'id': id.value,
-    'name': name,
-    'hostId': hostId.value,
-    'status': switch (status) {
-      RoomOpen() => 'open',
-      RoomPaused() => 'paused',
-      RoomClosed() => 'closed',
-    },
+    'rooms': [for (final room in rooms) room.toJson()],
   };
-
-  Room toDomain() => Room(id: id, name: name, hostId: hostId, status: status);
-
-  factory RoomDto.fromDomain(Room room) => RoomDto(
-    id: room.id,
-    name: room.name,
-    hostId: room.hostId,
-    status: room.status,
-  );
 }
 
 /// Runda glasanja kao odgovor servera.
@@ -75,8 +75,8 @@ final class RoundDto {
     required this.endsAt,
   });
 
-  final RoundId id;
-  final RoomId roomId;
+  final String id;
+  final String roomId;
   final DateTime startsAt;
   final DateTime endsAt;
 
@@ -91,30 +91,15 @@ final class RoundDto {
     if (startsAt == null || endsAt == null) {
       throw const FormatException('RoundDto trazi startsAt/endsAt kao datume');
     }
-    return RoundDto(
-      id: RoundId(id),
-      roomId: RoomId(roomId),
-      startsAt: startsAt,
-      endsAt: endsAt,
-    );
+    return RoundDto(id: id, roomId: roomId, startsAt: startsAt, endsAt: endsAt);
   }
 
   Map<String, Object?> toJson() => {
-    'id': id.value,
-    'roomId': roomId.value,
-    'startsAt': startsAt.toIso8601String(),
-    'endsAt': endsAt.toIso8601String(),
+    'id': id,
+    'roomId': roomId,
+    'startsAt': wireTime(startsAt),
+    'endsAt': wireTime(endsAt),
   };
-
-  Round toDomain() =>
-      Round(id: id, roomId: roomId, startsAt: startsAt, endsAt: endsAt);
-
-  factory RoundDto.fromDomain(Round round) => RoundDto(
-    id: round.id,
-    roomId: round.roomId,
-    startsAt: round.startsAt,
-    endsAt: round.endsAt,
-  );
 }
 
 /// Telo pravljenja sobe. Host je pozivalac — server ga zna iz tokena.
@@ -123,11 +108,20 @@ final class CreateRoomRequest {
 
   final String name;
 
+  /// Baca [FormatException] kad `name` nije string (prazno ime je pravilo
+  /// domena, ne format).
+  factory CreateRoomRequest.fromJson(Map<String, Object?> json) {
+    final name = json['name'];
+    if (name is! String) {
+      throw const FormatException('CreateRoomRequest trazi name');
+    }
+    return CreateRoomRequest(name: name);
+  }
+
   Map<String, Object?> toJson() => {'name': name};
 }
 
 /// Snimak sobe: sve sto ekranu glavnog toka treba, u jednom odgovoru.
-/// `toDomain` vraca zapis istog oblika kao port `RoomSnapshot` u `blocs`.
 final class RoomSnapshotDto {
   const RoomSnapshotDto({
     required this.room,
@@ -146,33 +140,32 @@ final class RoomSnapshotDto {
     final round = json['round'];
     final proposals = json['proposals'];
     final votes = json['votes'];
-    if (room is! Map<String, Object?> ||
-        round is! Map<String, Object?> ||
-        proposals is! List ||
-        votes is! List) {
+    if (room is! Map || round is! Map || proposals is! List || votes is! List) {
       throw const FormatException(
         'RoomSnapshotDto trazi room/round/proposals/votes',
       );
     }
     return RoomSnapshotDto(
-      room: RoomDto.fromJson(room),
-      round: RoundDto.fromJson(round),
-      proposals: [
-        for (final p in proposals)
-          if (p is Map<String, Object?>) ProposalDto.fromJson(p),
-      ],
-      votes: [
-        for (final v in votes)
-          if (v is Map<String, Object?>) VoteDto.fromJson(v),
-      ],
+      room: RoomDto.fromJson(_map(room)),
+      round: RoundDto.fromJson(_map(round)),
+      proposals: [for (final p in proposals) ProposalDto.fromJson(_map(p))],
+      votes: [for (final v in votes) VoteDto.fromJson(_map(v))],
     );
   }
 
-  ({Room room, Round round, List<Proposal> proposals, List<Vote> votes})
-  toDomain() => (
-    room: room.toDomain(),
-    round: round.toDomain(),
-    proposals: [for (final p in proposals) p.toDomain()],
-    votes: [for (final v in votes) v.toDomain()],
-  );
+  Map<String, Object?> toJson() => {
+    'room': room.toJson(),
+    'round': round.toJson(),
+    'proposals': [for (final p in proposals) p.toJson()],
+    'votes': [for (final v in votes) v.toJson()],
+  };
+}
+
+/// JSON objekat u `Map<String, Object?>`; baca za sve sto nije objekat.
+Map<String, Object?> _map(Object? json) {
+  if (json is Map<String, Object?>) return json;
+  if (json is Map) {
+    return {for (final entry in json.entries) '${entry.key}': entry.value};
+  }
+  throw const FormatException('Ocekivan JSON objekat');
 }

@@ -1,0 +1,22 @@
+name: radioroom_mapping
+description: "RadioRoom prevod domen <-> ugovor (modeli, stanja, uloge i greske pravila) na jednom mestu, za klijente i server. Cist Dart paket."
+version: 0.1.0
+
+# Privatan paket: nikad se ne objavljuje na pub.dev.
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
+resolution: workspace
+
+dependencies:
+  radioroom_contract:
+    path: ../contract
+  radioroom_domain:
+    path: ../domain
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.6

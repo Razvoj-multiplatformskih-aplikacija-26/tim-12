@@ -49,4 +49,13 @@ void main() {
 
     expect(ApiError.fromJson(error.toJson()), error);
   });
+
+  test('svaki dogovoren kôd ima HTTP status, nepoznat je 500', () {
+    for (final code in ErrorCodes.all.difference({ErrorCodes.unknown})) {
+      expect(ErrorCodes.httpStatus(code), isNot(500), reason: code);
+    }
+    expect(ErrorCodes.httpStatus(ErrorCodes.alreadyVotedInRound), 409);
+    expect(ErrorCodes.httpStatus(ErrorCodes.notOwnProposal), 403);
+    expect(ErrorCodes.httpStatus('buduce_pravilo'), 500);
+  });
 }

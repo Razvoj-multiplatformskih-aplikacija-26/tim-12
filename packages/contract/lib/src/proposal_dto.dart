@@ -1,44 +1,85 @@
-// DTO predloga i glasa — telo zahteva i oblik odgovora za rute predloga.
+// DTO pesme, predloga i glasa — telo zahteva i oblik odgovora za rute
+// predloga i kataloga.
 //
-// Pesma putuje ugnjezdena (`song: {title, artist, externalLink?}`), stanje
-// predloga kao string sa opcionim `playedAt`. Vremena su ISO-8601 (UTC).
-import 'package:radioroom_domain/radioroom_domain.dart';
+// Pesma putuje ugnjezdena (`song: {title, artist, ...}`), stanje predloga
+// kao string iz [ProposalStatusCodes] sa `playedAt` uz `played`. ID-jevi su
+// obicni stringovi, vremena ISO-8601 (UTC). Prevod u domenske tipove je u
+// `packages/mapping`.
+import 'wire_codes.dart';
+
+/// Pesma na mrezi. Opciona polja se ne salju kad ih nema.
+final class SongDto {
+  const SongDto({
+    required this.title,
+    required this.artist,
+    this.album,
+    this.durationMs,
+    this.externalLink,
+    this.coverUrl,
+  });
+
+  final String title;
+  final String artist;
+  final String? album;
+  final int? durationMs;
+  final String? externalLink;
+  final String? coverUrl;
+
+  factory SongDto.fromJson(Object? json) {
+    if (json is! Map || json['title'] is! String || json['artist'] is! String) {
+      throw const FormatException('SongDto mora imati title/artist');
+    }
+    return SongDto(
+      title: json['title'] as String,
+      artist: json['artist'] as String,
+      album: _string(json['album']),
+      durationMs: json['durationMs'] is int ? json['durationMs'] as int : null,
+      externalLink: _string(json['externalLink']),
+      coverUrl: _string(json['coverUrl']),
+    );
+  }
+
+  Map<String, Object?> toJson() => {
+    'title': title,
+    'artist': artist,
+    if (album != null) 'album': album,
+    if (durationMs != null) 'durationMs': durationMs,
+    if (externalLink != null) 'externalLink': externalLink,
+    if (coverUrl != null) 'coverUrl': coverUrl,
+  };
+}
 
 /// Predlog kao odgovor servera.
 final class ProposalDto {
   const ProposalDto({
     required this.id,
     required this.roomId,
-    required this.title,
-    required this.artist,
-    this.externalLink,
+    required this.song,
     required this.proposedBy,
     required this.proposedAt,
     required this.status,
+    this.playedAt,
   });
 
-  final ProposalId id;
-  final RoomId roomId;
-  final String title;
-  final String artist;
-  final String? externalLink;
-  final UserId proposedBy;
+  final String id;
+  final String roomId;
+  final SongDto song;
+  final String proposedBy;
   final DateTime proposedAt;
-  final ProposalStatus status;
+
+  /// Jedan od [ProposalStatusCodes].
+  final String status;
+
+  /// Postoji tacno kad je [status] `played`.
+  final DateTime? playedAt;
 
   factory ProposalDto.fromJson(Map<String, Object?> json) {
-    final song = json['song'];
-    final playedAt = DateTime.tryParse('${json['playedAt']}');
-    final status = _statusFromJson(json['status'], playedAt);
-    final proposedAt = DateTime.tryParse('${json['proposedAt']}');
     final id = json['id'];
     final roomId = json['roomId'];
     final proposedBy = json['proposedBy'];
-    if (song is! Map<String, Object?> ||
-        song['title'] is! String ||
-        song['artist'] is! String) {
-      throw const FormatException('ProposalDto.song mora imati title/artist');
-    }
+    final proposedAt = DateTime.tryParse('${json['proposedAt']}');
+    final status = json['status'];
+    final playedAt = DateTime.tryParse('${json['playedAt']}');
     if (id is! String || roomId is! String || proposedBy is! String) {
       throw const FormatException('ProposalDto trazi id/roomId/proposedBy');
     }
@@ -47,81 +88,45 @@ final class ProposalDto {
         'ProposalDto.proposedAt nije datum: ${json['proposedAt']}',
       );
     }
-    if (status == null) {
-      throw FormatException('ProposalDto.status nepoznat: ${json['status']}');
+    if (status is! String || !ProposalStatusCodes.all.contains(status)) {
+      throw FormatException('ProposalDto.status nepoznat: $status');
     }
-    final externalLink = song['externalLink'];
+    if (status == ProposalStatusCodes.played && playedAt == null) {
+      throw const FormatException('ProposalDto: played trazi playedAt');
+    }
     return ProposalDto(
-      id: ProposalId(id),
-      roomId: RoomId(roomId),
-      title: song['title'] as String,
-      artist: song['artist'] as String,
-      externalLink: externalLink is String ? externalLink : null,
-      proposedBy: UserId(proposedBy),
+      id: id,
+      roomId: roomId,
+      song: SongDto.fromJson(json['song']),
+      proposedBy: proposedBy,
       proposedAt: proposedAt,
       status: status,
+      playedAt: status == ProposalStatusCodes.played ? playedAt : null,
     );
   }
 
   Map<String, Object?> toJson() => {
-    'id': id.value,
-    'roomId': roomId.value,
-    'song': {
-      'title': title,
-      'artist': artist,
-      if (externalLink != null) 'externalLink': externalLink,
-    },
-    'proposedBy': proposedBy.value,
-    'proposedAt': proposedAt.toIso8601String(),
-    'status': _statusToJson(status),
-    if (status case Played(playedAt: final at))
-      'playedAt': at.toIso8601String(),
+    'id': id,
+    'roomId': roomId,
+    'song': song.toJson(),
+    'proposedBy': proposedBy,
+    'proposedAt': wireTime(proposedAt),
+    'status': status,
+    if (playedAt case final at?) 'playedAt': wireTime(at),
   };
-
-  Proposal toDomain() => Proposal(
-    id: id,
-    roomId: roomId,
-    song: Song(title: title, artist: artist, externalLink: externalLink),
-    proposedBy: proposedBy,
-    proposedAt: proposedAt,
-    status: status,
-  );
-
-  factory ProposalDto.fromDomain(Proposal proposal) => ProposalDto(
-    id: proposal.id,
-    roomId: proposal.roomId,
-    title: proposal.song.title,
-    artist: proposal.song.artist,
-    externalLink: proposal.song.externalLink,
-    proposedBy: proposal.proposedBy,
-    proposedAt: proposal.proposedAt,
-    status: proposal.status,
-  );
 }
 
 /// Telo predlaganja pesme. Identitet predlagaca se ne salje — server ga
-/// zna iz tokena. `roomId` putuje i u telu i (po dogovoru) u putanji rute.
+/// zna iz tokena, a sobu iz putanje rute.
 final class CreateProposalRequest {
-  const CreateProposalRequest({
-    required this.roomId,
-    required this.title,
-    required this.artist,
-    this.externalLink,
-  });
+  const CreateProposalRequest({required this.song});
 
-  final RoomId roomId;
-  final String title;
-  final String artist;
-  final String? externalLink;
+  final SongDto song;
 
-  Map<String, Object?> toJson() => {
-    'roomId': roomId.value,
-    'song': {
-      'title': title,
-      'artist': artist,
-      if (externalLink != null) 'externalLink': externalLink,
-    },
-  };
+  factory CreateProposalRequest.fromJson(Map<String, Object?> json) =>
+      CreateProposalRequest(song: SongDto.fromJson(json['song']));
+
+  Map<String, Object?> toJson() => {'song': song.toJson()};
 }
 
 /// Glas kao odgovor servera. ID i trenutak dodeljuje server.
@@ -134,10 +139,10 @@ final class VoteDto {
     required this.castAt,
   });
 
-  final VoteId id;
-  final RoundId roundId;
-  final ProposalId proposalId;
-  final UserId voterId;
+  final String id;
+  final String roundId;
+  final String proposalId;
+  final String voterId;
   final DateTime castAt;
 
   factory VoteDto.fromJson(Map<String, Object?> json) {
@@ -150,75 +155,75 @@ final class VoteDto {
         roundId is! String ||
         proposalId is! String ||
         voterId is! String) {
-      throw const FormatException('VoteDto trazi id/roundId/proposalId/voterId');
+      throw const FormatException(
+        'VoteDto trazi id/roundId/proposalId/voterId',
+      );
     }
     if (castAt == null) {
       throw FormatException('VoteDto.castAt nije datum: ${json['castAt']}');
     }
     return VoteDto(
-      id: VoteId(id),
-      roundId: RoundId(roundId),
-      proposalId: ProposalId(proposalId),
-      voterId: UserId(voterId),
+      id: id,
+      roundId: roundId,
+      proposalId: proposalId,
+      voterId: voterId,
       castAt: castAt,
     );
   }
 
   Map<String, Object?> toJson() => {
-    'id': id.value,
-    'roundId': roundId.value,
-    'proposalId': proposalId.value,
-    'voterId': voterId.value,
-    'castAt': castAt.toIso8601String(),
+    'id': id,
+    'roundId': roundId,
+    'proposalId': proposalId,
+    'voterId': voterId,
+    'castAt': wireTime(castAt),
   };
-
-  Vote toDomain() => Vote(
-    id: id,
-    roundId: roundId,
-    proposalId: proposalId,
-    voterId: voterId,
-    castAt: castAt,
-  );
-
-  factory VoteDto.fromDomain(Vote vote) => VoteDto(
-    id: vote.id,
-    roundId: vote.roundId,
-    proposalId: vote.proposalId,
-    voterId: vote.voterId,
-    castAt: vote.castAt,
-  );
 }
 
-/// Telo glasanja. Rundu klijent zna iz snimka sobe; glasača server zna
+/// Telo glasanja. Rundu klijent zna iz snimka sobe; glasaca server zna
 /// iz tokena, pa se `voterId` ne salje.
 final class CastVoteRequest {
   const CastVoteRequest({required this.roundId, required this.proposalId});
 
-  final RoundId roundId;
-  final ProposalId proposalId;
+  final String roundId;
+  final String proposalId;
+
+  /// Baca [FormatException] kad nedostaje runda ili predlog.
+  factory CastVoteRequest.fromJson(Map<String, Object?> json) {
+    final roundId = json['roundId'];
+    final proposalId = json['proposalId'];
+    if (roundId is! String ||
+        roundId.isEmpty ||
+        proposalId is! String ||
+        proposalId.isEmpty) {
+      throw const FormatException('CastVoteRequest trazi roundId/proposalId');
+    }
+    return CastVoteRequest(roundId: roundId, proposalId: proposalId);
+  }
 
   Map<String, Object?> toJson() => {
-    'roundId': roundId.value,
-    'proposalId': proposalId.value,
+    'roundId': roundId,
+    'proposalId': proposalId,
   };
 }
 
-ProposalStatus? _statusFromJson(Object? status, DateTime? playedAt) =>
-    switch (status) {
-      'proposed' => const Proposed(),
-      'in_voting' => const InVoting(),
-      'winner' => const Winner(),
-      'played' => playedAt == null ? null : Played(playedAt),
-      'rejected' => const Rejected(),
-      'removed' => const Removed(),
-      _ => null,
-    };
+/// Odgovor pretrage kataloga: `{songs: [...]}`.
+final class CatalogSearchResponse {
+  const CatalogSearchResponse({required this.songs});
 
-String _statusToJson(ProposalStatus status) => switch (status) {
-  Proposed() => 'proposed',
-  InVoting() => 'in_voting',
-  Winner() => 'winner',
-  Played() => 'played',
-  Rejected() => 'rejected',
-  Removed() => 'removed',
-};
+  final List<SongDto> songs;
+
+  factory CatalogSearchResponse.fromJson(Map<String, Object?> json) {
+    final songs = json['songs'];
+    if (songs is! List) {
+      throw const FormatException('CatalogSearchResponse trazi songs');
+    }
+    return CatalogSearchResponse(songs: songs.map(SongDto.fromJson).toList());
+  }
+
+  Map<String, Object?> toJson() => {
+    'songs': [for (final song in songs) song.toJson()],
+  };
+}
+
+String? _string(Object? value) => value is String ? value : null;

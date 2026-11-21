@@ -6,12 +6,13 @@
 //
 // Nepoznat kôd ili osteceni podaci ne ruse staru verziju: [ruleErrorFromApi]
 // tada vrati `null`, a klijent pokaze opstu poruku umesto specificne.
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
-import 'api_error.dart';
+import 'codes.dart';
 
-/// Domenska greska u `{code, data}` za server (isti oblik kao `errorResponse`
-/// u `apps/server`: kôd i podaci, bez teksta).
+/// Domenska greska u `{code, data}` za server: kôd i podaci, bez teksta.
+/// HTTP status za kôd daje `ErrorCodes.httpStatus`.
 ApiError apiErrorFromRule(ProposalRuleError error) => switch (error) {
   TooManyActiveProposals(:final activeCount, :final limit) => ApiError(
     code: ErrorCodes.tooManyActiveProposals,
@@ -22,16 +23,17 @@ ApiError apiErrorFromRule(ProposalRuleError error) => switch (error) {
     data: {
       'title': song.title,
       'artist': song.artist,
-      'playedAt': playedAt.toIso8601String(),
+      'playedAt': wireTime(playedAt),
     },
   ),
   InvalidVoteTarget(:final proposalId) => ApiError(
     code: ErrorCodes.invalidVoteTarget,
     data: {'proposalId': proposalId.value},
   ),
-  AlreadyVotedInRound(:final voterId, :final roundId) => ApiError(
+  // Pozivalac je uvek glasac, pa `voterId` ne ide na mrezu.
+  AlreadyVotedInRound(:final roundId) => ApiError(
     code: ErrorCodes.alreadyVotedInRound,
-    data: {'voterId': voterId.value, 'roundId': roundId.value},
+    data: {'roundId': roundId.value},
   ),
   ProposalNotRemovable(:final proposalId) => ApiError(
     code: ErrorCodes.proposalNotRemovable,
@@ -41,12 +43,12 @@ ApiError apiErrorFromRule(ProposalRuleError error) => switch (error) {
   RoomNameEmpty() => const ApiError(code: ErrorCodes.roomNameEmpty),
   ActionNotAllowed(:final action, :final role) => ApiError(
     code: ErrorCodes.actionNotAllowed,
-    data: {'action': action.name, 'role': role.name},
+    data: {'action': action.name, 'role': roleToCode(role)},
   ),
   UserBlocked() => const ApiError(code: ErrorCodes.userBlocked),
   BackofficeNotAllowed(:final role) => ApiError(
     code: ErrorCodes.backofficeNotAllowed,
-    data: {'role': role.name},
+    data: {'role': roleToCode(role)},
   ),
   NotOwnProposal(:final proposalId) => ApiError(
     code: ErrorCodes.notOwnProposal,
@@ -58,7 +60,7 @@ ApiError apiErrorFromRule(ProposalRuleError error) => switch (error) {
   ),
   RoomNotOpen(:final status) => ApiError(
     code: ErrorCodes.roomNotOpen,
-    data: {'status': _roomStatusToCode(status)},
+    data: {'status': roomStatusToCode(status)},
   ),
   RoundClosed(:final roundId) => ApiError(
     code: ErrorCodes.roundClosed,
@@ -93,8 +95,8 @@ ProposalRuleError? ruleErrorFromApi(ApiError error) {
           ? null
           : InvalidVoteTarget(proposalId: ProposalId(proposalId));
     case ErrorCodes.alreadyVotedInRound:
-      // Server salje samo roundId (pozivalac je uvek glasac, pa voterId
-      // ne ide na mrezu); domenski tip ga zahteva, a poruka ga ne koristi.
+      // Na mrezi je samo roundId (vidi gore); domenski tip trazi voterId,
+      // a poruka ga ne koristi.
       final voterId = _id(data, 'voterId') ?? '';
       final roundId = _id(data, 'roundId');
       if (roundId == null) return null;
@@ -113,13 +115,13 @@ ProposalRuleError? ruleErrorFromApi(ApiError error) {
       return const RoomNameEmpty();
     case ErrorCodes.actionNotAllowed:
       final action = UserAction.values.asNameMap()[data['action']];
-      final role = Role.values.asNameMap()[data['role']];
+      final role = roleFromCode(data['role']);
       if (action == null || role == null) return null;
       return ActionNotAllowed(action: action, role: role);
     case ErrorCodes.userBlocked:
       return const UserBlocked();
     case ErrorCodes.backofficeNotAllowed:
-      final role = Role.values.asNameMap()[data['role']];
+      final role = roleFromCode(data['role']);
       if (role == null) return null;
       return BackofficeNotAllowed(role: role);
     case ErrorCodes.notOwnProposal:
@@ -133,13 +135,11 @@ ProposalRuleError? ruleErrorFromApi(ApiError error) {
           ? null
           : ProposalNotWithdrawable(proposalId: ProposalId(proposalId));
     case ErrorCodes.roomNotOpen:
-      final status = _roomStatusFromCode(data['status']);
+      final status = roomStatusFromCode(data['status']);
       return status == null ? null : RoomNotOpen(status: status);
     case ErrorCodes.roundClosed:
       final roundId = _id(data, 'roundId');
-      return roundId == null
-          ? null
-          : RoundClosed(roundId: RoundId(roundId));
+      return roundId == null ? null : RoundClosed(roundId: RoundId(roundId));
     default:
       return null;
   }
@@ -150,18 +150,3 @@ String? _id(Map<String, Object?> data, String key) {
   final value = data[key];
   return value is String && value.isNotEmpty ? value : null;
 }
-
-/// Kod stanja sobe u tip (`open`/`paused`/`closed`); `null` za nepoznato.
-RoomStatus? _roomStatusFromCode(Object? code) => switch (code) {
-  'open' => const RoomOpen(),
-  'paused' => const RoomPaused(),
-  'closed' => const RoomClosed(),
-  _ => null,
-};
-
-/// Tip stanja sobe u kod za `{code, data}` (isti kodovi kao server).
-String _roomStatusToCode(RoomStatus status) => switch (status) {
-  RoomOpen() => 'open',
-  RoomPaused() => 'paused',
-  RoomClosed() => 'closed',
-};

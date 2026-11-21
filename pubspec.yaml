@@ -13,6 +13,7 @@ environment:
 workspace:
   - packages/domain
   - packages/contract
+  - packages/mapping
   - packages/blocs
   - packages/api_client
   - packages/ui

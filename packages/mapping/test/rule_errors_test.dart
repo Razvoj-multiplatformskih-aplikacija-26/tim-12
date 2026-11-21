@@ -3,6 +3,7 @@
 // (opsta poruka) umesto pada stare verzije.
 import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -16,10 +17,8 @@ void main() {
       ): ErrorCodes.recentlyPlayedSong,
       const InvalidVoteTarget(proposalId: ProposalId('p1')):
           ErrorCodes.invalidVoteTarget,
-      const AlreadyVotedInRound(
-        voterId: UserId('u1'),
-        roundId: RoundId('rd1'),
-      ): ErrorCodes.alreadyVotedInRound,
+      const AlreadyVotedInRound(voterId: UserId('u1'), roundId: RoundId('rd1')):
+          ErrorCodes.alreadyVotedInRound,
       const ProposalNotRemovable(proposalId: ProposalId('p1')):
           ErrorCodes.proposalNotRemovable,
       const RoomNotClosable(): ErrorCodes.roomNotClosable,
@@ -79,6 +78,14 @@ void main() {
     );
   });
 
+  test('already_voted ne salje voterId na mrezu', () {
+    final error = apiErrorFromRule(
+      const AlreadyVotedInRound(voterId: UserId('u1'), roundId: RoundId('rd1')),
+    );
+    expect(error.data, {'roundId': 'rd1'});
+    expect(ErrorCodes.httpStatus(error.code), 409);
+  });
+
   test('already_voted sa serverskog zice (samo roundId) daje tip', () {
     final back = ruleErrorFromApi(
       const ApiError(
@@ -91,10 +98,7 @@ void main() {
   });
 
   test('nepoznat kôd daje null (stara verzija ne pada)', () {
-    expect(
-      ruleErrorFromApi(const ApiError(code: 'buduce_pravilo')),
-      isNull,
-    );
+    expect(ruleErrorFromApi(const ApiError(code: 'buduce_pravilo')), isNull);
   });
 
   test('osteceni podaci daju null umesto pada', () {

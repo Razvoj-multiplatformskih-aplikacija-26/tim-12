@@ -18,9 +18,11 @@ dependencies:
   radioroom_domain:
     path: ../domain
   # Ugovor {code, data}: iz njega `serverMessage` bira poruku za serversko
-  # odbijanje (kodovi i prevod u tip greske pravila).
+  # odbijanje (kodovi), a `mapping` prevodi kôd u tip greske pravila.
   radioroom_contract:
     path: ../contract
+  radioroom_mapping:
+    path: ../mapping
 
 dev_dependencies:
   flutter_test:

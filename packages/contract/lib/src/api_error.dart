@@ -6,8 +6,8 @@
 //
 // Nepoznat kôd ne sme da srusi staru verziju aplikacije: [ApiError] cuva kôd
 // kao `String` (a ne kao enum), pa prosledjivanje nepoznatog koda samo znaci
-// da tipizovani prevod u `rule_errors.dart` vrati `null`, a klijent pokaze
-// opstu poruku.
+// da tipizovani prevod (`ruleErrorFromApi` u `packages/mapping`) vrati
+// `null`, a klijent pokaze opstu poruku.
 final class ApiError {
   const ApiError({required this.code, this.data = const {}});
 
@@ -59,8 +59,8 @@ final class ApiError {
 /// Dogovoreni kodovi gresaka (jedno mesto za klijente i server).
 ///
 /// Prijava i sesija: ista tabela kao u `apps/server` README-u. Pravila:
-/// isti redosled i imena kao tipovi u `proposal_rules.dart` — prevod zivi
-/// u `rule_errors.dart`, ovde su samo stringovi.
+/// isti redosled i imena kao tipovi u `proposal_rules.dart` — prevod u tip
+/// zivi u `packages/mapping`, ovde su samo stringovi i HTTP status.
 abstract final class ErrorCodes {
   // Prijava i sesija.
   static const badRequest = 'bad_request';
@@ -83,6 +83,11 @@ abstract final class ErrorCodes {
   static const proposalNotWithdrawable = 'proposal_not_withdrawable';
   static const roomNotOpen = 'room_not_open';
   static const roundClosed = 'round_closed';
+
+  // Nepostojeci zapis i spoljni servis.
+  static const roomNotFound = 'room_not_found';
+  static const proposalNotFound = 'proposal_not_found';
+  static const catalogUnavailable = 'catalog_unavailable';
 
   /// Zamena za nepoznat kôd ili odgovor bez koda.
   static const unknown = 'unknown_error';
@@ -107,7 +112,35 @@ abstract final class ErrorCodes {
     proposalNotWithdrawable,
     roomNotOpen,
     roundClosed,
+    roomNotFound,
+    proposalNotFound,
+    catalogUnavailable,
     unknown,
+  };
+
+  /// HTTP status kojim server salje [code]: 400 los zahtev, 401 bez vazece
+  /// prijave, 403 prava, 404 nepostojeci zapis, 409 vec upisan glas, 422
+  /// ostala pravila, 503 spoljni servis. Nepoznat kôd je 500.
+  static int httpStatus(String code) => switch (code) {
+    badRequest => 400,
+    invalidCredentials || unauthenticated || sessionExpired => 401,
+    userBlocked ||
+    backofficeNotAllowed ||
+    actionNotAllowed ||
+    notOwnProposal => 403,
+    roomNotFound || proposalNotFound => 404,
+    alreadyVotedInRound => 409,
+    tooManyActiveProposals ||
+    recentlyPlayedSong ||
+    invalidVoteTarget ||
+    proposalNotRemovable ||
+    roomNotClosable ||
+    roomNameEmpty ||
+    proposalNotWithdrawable ||
+    roomNotOpen ||
+    roundClosed => 422,
+    catalogUnavailable => 503,
+    _ => 500,
   };
 }
 

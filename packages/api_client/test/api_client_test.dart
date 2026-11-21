@@ -60,10 +60,17 @@ void main() {
       expect(error.data['voterId'], 'u1');
     });
 
-    test('404 room_not_found prolazi kao ServerRejected (nepoznat kod)', () async {
+    test('404 room_not_found prolazi kao ServerRejected', () async {
       final api = _api(http.Response(jsonEncode({'code': 'room_not_found'}), 404));
       final error = await _rejection(() => api.getJson('/rooms/r9'));
-      expect(error.code, 'room_not_found');
+      expect(error.code, ErrorCodes.roomNotFound);
+      expect(error.isKnown, isTrue);
+    });
+
+    test('nepoznat kod prolazi kao ServerRejected (stara verzija)', () async {
+      final api = _api(http.Response(jsonEncode({'code': 'buduce_pravilo'}), 422));
+      final error = await _rejection(() => api.getJson('/rooms/r1'));
+      expect(error.code, 'buduce_pravilo');
       expect(error.isKnown, isFalse);
     });
 
