@@ -5,19 +5,28 @@
 // ovaj fajl — ruter i ekrani znaju samo za port i Bloc i ne menjaju se.
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:radioroom_api_client/radioroom_api_client.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
-import 'data/fake_moderation_repository.dart';
 import 'router.dart';
 
 void main() {
-  final repository = FakeModerationRepository();
+  // HTTP port: isti Bloc i ekrani, podaci stizu sa servera. Lazni
+  // repozitorijum ostaje u `data/` za demo bez servera (njegov `failNext`
+  // i dalje radi kao okidac greske sledeceg zahteva).
+  final repository = HttpProposalRepository(
+    ApiClient(
+      baseUrl: apiBaseUrl,
+      // TODO(celina 04): token iz bezbednog skladista; do tada server
+      // vraca 401 pa Bloc pokazuje genericku gresku sa "Pokusaj ponovo".
+      tokenProvider: () async => null,
+    ),
+  );
   runApp(
     BackofficeApp(
-      router: createRouter(
-        repository: repository,
-        onSimulateError: () => repository.failNext = true,
-      ),
+      // Bez laznog repozitorijuma nema okidaca greske: stavka menija se
+      // tada ne prikazuje (`onSimulateError` je nullable u ruteru).
+      router: createRouter(repository: repository),
     ),
   );
 }

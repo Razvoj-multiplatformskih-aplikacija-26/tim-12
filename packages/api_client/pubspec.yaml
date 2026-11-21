@@ -1,0 +1,25 @@
+name: radioroom_api_client
+description: "RadioRoom HTTP klijent servera: ApiClient i HttpProposalRepository. Cist Dart paket, radi i na VM i u pregledacu."
+version: 0.1.0
+
+# Privatan paket: nikad se ne objavljuje na pub.dev.
+publish_to: none
+
+environment:
+  sdk: ^3.6.0
+
+# Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
+resolution: workspace
+
+dependencies:
+  radioroom_blocs:
+    path: ../blocs
+  radioroom_contract:
+    path: ../contract
+  radioroom_domain:
+    path: ../domain
+  http: ^1.6.0
+
+dev_dependencies:
+  lints: ^6.1.0
+  test: ^1.25.6

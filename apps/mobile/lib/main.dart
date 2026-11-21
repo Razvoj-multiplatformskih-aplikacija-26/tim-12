@@ -6,14 +6,24 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+import 'package:radioroom_api_client/radioroom_api_client.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
 import 'data/demo_room.dart';
-import 'data/fake_proposal_repository.dart';
 import 'router.dart';
 
 void main() {
-  final repository = FakeProposalRepository();
+  // HTTP port: ista Bloc i ekrani, podaci stizu sa servera. Lazni
+  // repozitorijum ostaje u `data/` za demo bez servera (njegov `failNext`
+  // i dalje radi kao okidac greske sledeceg zahteva).
+  final repository = HttpProposalRepository(
+    ApiClient(
+      baseUrl: apiBaseUrl,
+      // TODO(celina 04): token iz bezbednog skladista; do tada server
+      // vraca 401 pa Bloc pokazuje genericku gresku sa "Pokusaj ponovo".
+      tokenProvider: () async => null,
+    ),
+  );
   // Rezim teme zivi ovde (sistemska/svetla/tamna); meni u vrhu sobe ga
   // menja kroz povratni poziv — ekrani i Bloc ga ne znaju.
   final themeMode = ValueNotifier(ThemeMode.system);
@@ -22,7 +32,8 @@ void main() {
       router: createRouter(
         repository: repository,
         currentUser: demoUser,
-        onSimulateError: () => repository.failNext = true,
+        // Bez laznog repozitorijuma nema okidaca greske: stavka menija se
+        // tada ne prikazuje (`onSimulateError` je nullable u ruteru).
         themeMode: themeMode,
         onToggleTheme: () => themeMode.value = _next(themeMode.value),
       ),
