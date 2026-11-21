@@ -14,6 +14,10 @@ resolution: workspace
 dependencies:
   radioroom_domain:
     path: ../domain
+  # Ugovor {code, data}: portovi njime prijavljuju serversko odbijanje
+  # (`ServerRejected`), bez teksta poruke.
+  radioroom_contract:
+    path: ../contract
   bloc: ^9.2.1
   equatable: ^3.0.0
 

@@ -5,6 +5,7 @@
 // Prazan prikaz nije posebno stanje: prazne liste u `ModerationLoaded`
 // ekran crta kao "nema soba/predloga".
 import 'package:equatable/equatable.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 import '../ports/room_snapshot.dart';
@@ -60,7 +61,16 @@ final class ModerationLoaded extends ModerationState {
   List<Object?> get props => [rooms, snapshot, tally, ruleError];
 }
 
-/// Tehnicka greska porta. Bez teksta — ekran nudi "Pokusaj ponovo".
+/// Greska porta. Bez teksta — ekran nudi "Pokusaj ponovo".
+///
+/// [reason] je serverski razlog odbijanja (`{code, data}` iz ugovora),
+/// ili null kad je greska tehnicka. Posle odbijanja Bloc sam osvezava
+/// podatke; poruku bira aplikacija (`serverMessage`).
 final class ModerationError extends ModerationState {
-  const ModerationError();
+  const ModerationError({this.reason});
+
+  final ApiError? reason;
+
+  @override
+  List<Object?> get props => [reason];
 }

@@ -3,6 +3,7 @@
 // Prazan prikaz nije posebno stanje: praznu listu u `RoomsLoaded` ekran
 // crta kao "nema soba — napravi prvu".
 import 'package:equatable/equatable.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 sealed class RoomsState extends Equatable {
@@ -34,7 +35,16 @@ final class RoomsLoaded extends RoomsState {
   List<Object?> get props => [rooms, ruleError];
 }
 
-/// Tehnicka greska porta. Bez teksta — ekran nudi "Pokusaj ponovo".
+/// Greska porta. Bez teksta — ekran nudi "Pokusaj ponovo".
+///
+/// [reason] je serverski razlog odbijanja (`{code, data}` iz ugovora),
+/// ili null kad je greska tehnicka. Posle odbijanja Bloc sam osvezava
+/// listu soba; poruku bira aplikacija (`serverMessage`).
 final class RoomsError extends RoomsState {
-  const RoomsError();
+  const RoomsError({this.reason});
+
+  final ApiError? reason;
+
+  @override
+  List<Object?> get props => [reason];
 }

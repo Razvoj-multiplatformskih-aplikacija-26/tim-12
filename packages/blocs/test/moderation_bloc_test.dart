@@ -6,6 +6,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:test/test.dart';
 
@@ -260,5 +261,85 @@ void main() {
         verify(() => repository.loadRooms()).called(1);
       },
     );
+  });
+
+  group('serversko odbijanje', () {
+    const rejection = ApiError(code: ErrorCodes.roomNotClosable);
+
+    blocTest<ModerationBloc, ModerationState>(
+      'odbijeno uklanjanje: razlog u stanju, snimak se sam osvezava',
+      build: build,
+      seed: () => ModerationLoaded(
+        rooms: const [_room],
+        snapshot: _snapshot(proposals: [_proposal('p1')]),
+        tally: const {},
+      ),
+      setUp: () {
+        when(
+          () => repository.removeProposal(
+            roomId: any(named: 'roomId'),
+            proposalId: any(named: 'proposalId'),
+          ),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRoom(any())).thenAnswer(
+          (_) async => _snapshot(proposals: [_proposal('p1')]),
+        );
+      },
+      act: (bloc) =>
+          bloc.add(const ModerationProposalRemoved(ProposalId('p1'))),
+      expect: () => [
+        const ModerationError(reason: rejection),
+        isA<ModerationLoaded>().having(
+          (s) => s.snapshot?.proposals.length,
+          'broj predloga',
+          1,
+        ),
+      ],
+      verify: (_) {
+        verify(() => repository.loadRoom(any())).called(1);
+      },
+    );
+
+    blocTest<ModerationBloc, ModerationState>(
+      'odbijeno zatvaranje: razlog u stanju, lista soba se osvezava',
+      build: build,
+      seed: () => ModerationLoaded(
+        rooms: const [_room],
+        snapshot: _snapshot(),
+        tally: const {},
+      ),
+      setUp: () {
+        when(
+          () => repository.closeRoom(roomId: any(named: 'roomId')),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRooms()).thenAnswer(
+          (_) async => const [_room],
+        );
+      },
+      act: (bloc) => bloc.add(const ModerationRoomClosed(_roomId)),
+      expect: () => [
+        const ModerationError(reason: rejection),
+        isA<ModerationLoaded>().having(
+          (s) => s.rooms.length,
+          'broj soba',
+          1,
+        ),
+      ],
+      verify: (_) {
+        verify(() => repository.loadRooms()).called(1);
+      },
+    );
+
+    test('Equatable: razlog ucestvuje u jednakosti stanja', () {
+      expect(
+        const ModerationError(reason: rejection),
+        const ModerationError(reason: rejection),
+      );
+      expect(const ModerationError(), const ModerationError(reason: null));
+      expect(
+        const ModerationError(),
+        isNot(const ModerationError(reason: rejection)),
+      );
+    });
   });
 }

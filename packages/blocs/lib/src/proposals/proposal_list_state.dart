@@ -4,6 +4,7 @@
 // stanje je greska kompajliranja, ne bag na odbrani. Equatable: dva stanja
 // sa istim podacima su jednaka, pa Bloc ne emituje duplikate.
 import 'package:equatable/equatable.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 import '../ports/room_snapshot.dart';
@@ -63,8 +64,18 @@ final class ProposalsLoaded extends ProposalListState {
   List<Object?> get props => [snapshot, tally, ruleError, lastAdded];
 }
 
-/// Tehnicka greska porta. Bez teksta (standard: poruku bira aplikacija) —
-/// ekran nudi "Pokusaj ponovo", koji salje `ProposalsRequested`.
+/// Greska porta. Bez teksta (standard: poruku bira aplikacija) — ekran
+/// nudi "Pokusaj ponovo", koji salje `ProposalsRequested`.
+///
+/// [reason] je serverski razlog odbijanja (`{code, data}` iz ugovora),
+/// ili null kad je greska tehnicka (mreza, kvar). Posle odbijanja Bloc
+/// sam osvezava podatke, pa korisnik vidi razlog i sveze stanje bez
+/// pritiska; poruku bira aplikacija (`serverMessage`).
 final class ProposalsError extends ProposalListState {
-  const ProposalsError();
+  const ProposalsError({this.reason});
+
+  final ApiError? reason;
+
+  @override
+  List<Object?> get props => [reason];
 }

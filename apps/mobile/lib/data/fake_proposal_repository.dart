@@ -1,11 +1,12 @@
-// Lazna implementacija porta: podaci u memoriji, sa kasnjenjem i okidacem
-// greske sledeceg zahteva.
+// Lazna implementacija porta: podaci u memoriji, sa kasnjenjem i okidacima
+// greske sledeceg zahteva (tehnicke i serverskog odbijanja).
 //
 // Zivi u aplikaciji, a ne u `blocs`: drugi klijent (backoffice) daje svoju
 // implementaciju bez dodira zajednickog paketa, a u KT2 je zamenjuje klijent
 // servera — Bloc i ekran se ne menjaju. Pravila NISU ovde (ugovor porta):
 // sta stigne, to se upise; Bloc ih proverava domenom pre poziva.
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 import 'demo_room.dart';
@@ -28,6 +29,17 @@ final class FakeProposalRepository implements ProposalRepository {
   /// Okidac: sledeci zahtev (bilo koji) baca izuzetak, pa se resetuje.
   /// Ekran ga pali stavkom menija "Simuliraj gresku".
   bool failNext = false;
+
+  /// Okidac odbijanja: sledeci zahtev (bilo koji) baca [ServerRejected] sa
+  /// [rejectionReason], pa se resetuje. Razlog odbijanja Bloc nosi u stanju
+  /// i sam osvezava prikaz — demonstracija tipizovane greske bez servera.
+  bool failNextRejected = false;
+
+  /// Demo razlog odbijanja za [failNextRejected] (menja se po zelji).
+  ApiError rejectionReason = const ApiError(
+    code: ErrorCodes.tooManyActiveProposals,
+    data: {'activeCount': 3, 'limit': 3},
+  );
 
   /// Sobe po ID-ju; svaka sa svojim predlozima i glasovima.
   final Map<RoomId, _RoomData> _rooms = {};
@@ -143,9 +155,14 @@ final class FakeProposalRepository implements ProposalRepository {
     return room;
   }
 
-  /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska.
+  /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska
+  /// (prvo odbijanje, pa tehnicka — obe se resetuju posle prvog hica).
   Future<void> _request() async {
     await Future<void>.delayed(delay);
+    if (failNextRejected) {
+      failNextRejected = false;
+      throw ServerRejected(rejectionReason);
+    }
     if (failNext) {
       failNext = false;
       throw Exception('Simulirana greska');

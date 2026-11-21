@@ -4,6 +4,7 @@
 // tekst. Podaci u poruci (broj, limit, pesma, vreme) stizu iz same greske,
 // pa se vrednosti pravila ne ponavljaju ovde: promena limita u domenu
 // automatski menja i poruku.
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 /// Tekst poruke za prekrsaj pravila. Exhaustive switch nad sealed tipom:
@@ -39,6 +40,29 @@ String ruleMessage(ProposalRuleError error) => switch (error) {
     'Runda je završena pre nego što je glas stigao — glas nije ubrojan. '
         'Pogledaj pobednika i glasaj u novoj rundi.',
 };
+
+/// Tekst poruke za serversko odbijanje (`{code, data}` iz ugovora).
+///
+/// Kodovi domenskih pravila prvo se prevode u tip greske pravila
+/// (`ruleErrorFromApi`) pa u tekst iznad — poruka onda nosi podatke
+/// pravila (limit, uloga, vreme...) iz samih podataka, a vrednosti se ne
+/// ponavljaju ovde. Mrezni i prijavni kodovi imaju svoje poruke ispod.
+///
+/// Nepoznat kôd ili oštećeni podaci ne ruše starog klijenta: pada se na
+/// opštu poruku. Klijent bira samo tekst — razlog i dalje dolazi kao tip.
+String serverMessage(ApiError error) {
+  final rule = ruleErrorFromApi(error);
+  if (rule != null) return ruleMessage(rule);
+  return switch (error.code) {
+    ErrorCodes.invalidCredentials =>
+      'Neispravno korisničko ime ili lozinka. Probaj ponovo.',
+    ErrorCodes.unauthenticated => 'Nisi prijavljen. Prijavi se pa nastavi.',
+    ErrorCodes.sessionExpired => 'Sesija je istekla. Prijavi se ponovo.',
+    ErrorCodes.badRequest => 'Zahtev nije ispravan. Proveri unos i probaj ponovo.',
+    // Nepoznat kôd: opšta poruka umesto specificne — stara verzija ne pada.
+    _ => 'Server nije prihvatio zahtev. Probaj ponovo.',
+  };
+}
 
 String _roleName(Role role) => switch (role) {
   Role.listener => 'slušalac',

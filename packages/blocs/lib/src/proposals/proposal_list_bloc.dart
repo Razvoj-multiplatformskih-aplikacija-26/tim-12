@@ -3,7 +3,8 @@
 // Bloc NE sadrzi pravila: pre svake akcije zove pravila iz domena i tek ako
 // sva vaze zove port. Prekrsaj pravila (`RuleInvalid`) nije greska ekrana —
 // ostaje u podacima kao `ruleError`; tehnicki neuspeh porta (izuzetak) vodi
-// u `ProposalsError` sa "Pokusaj ponovo".
+// u `ProposalsError` sa "Pokusaj ponovo", a serversko odbijanje
+// (`ServerRejected`) nosi razlog u stanju i sam osvezava sobu.
 //
 // "Sad" stize kroz [clock] (ista konvencija kao domen), a korisnik kroz
 // konstruktor — u KT1 nema prijave, u KT2 ga daje auth bez izmene ekrana.
@@ -12,6 +13,7 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 
 import '../ports/proposal_repository.dart';
 import '../ports/room_snapshot.dart';
+import '../ports/server_rejected.dart';
 import 'proposal_list_event.dart';
 import 'proposal_list_state.dart';
 
@@ -48,6 +50,11 @@ final class ProposalListBloc
     emit(const ProposalsLoading());
     try {
       emit(_stateFor(await _repository.loadRoom(_roomId)));
+    } on ServerRejected catch (rejected) {
+      // Odbijeno je samo ucitavanje: automatski reload bi ponovnim
+      // zahtevom isla u petlju (npr. istekla sesija odbija svaki put).
+      // Razlikuje se od odbijanja akcije — ekran nudi "Pokusaj ponovo".
+      emit(ProposalsError(reason: rejected.error));
     } on Exception {
       emit(const ProposalsError());
     }
@@ -93,6 +100,8 @@ final class ProposalListBloc
           lastAdded: proposal,
         ),
       );
+    } on ServerRejected catch (rejected) {
+      await _onRejected(rejected, emit);
     } on Exception {
       emit(const ProposalsError());
     }
@@ -139,8 +148,28 @@ final class ProposalListBloc
           ),
         ),
       );
+    } on ServerRejected catch (rejected) {
+      await _onRejected(rejected, emit);
     } on Exception {
       emit(const ProposalsError());
+    }
+  }
+
+  /// Server je odbio akciju: razlog ide u stanje, pa Bloc SAM osvezava
+  /// sobu. Bez Loading-a — razlog odbijanja ostaje na ekranu dok reload
+  /// traje, a sveze stanje stize bez ijednog pritiska korisnika. Lokalni
+  /// snimak moze da bude zastareo (npr. neko je izmedju glasao), zato se
+  /// poverenje vraca portu.
+  Future<void> _onRejected(
+    ServerRejected rejected,
+    Emitter<ProposalListState> emit,
+  ) async {
+    emit(ProposalsError(reason: rejected.error));
+    try {
+      emit(_stateFor(await _repository.loadRoom(_roomId)));
+    } on Exception {
+      // Razlog je vec na ekranu uz "Pokusaj ponovo"; kvar osvezavanja
+      // ga samo zadrzava (nema Loading flash-a ni gubitka razloga).
     }
   }
 

@@ -1,10 +1,12 @@
 // Lazna implementacija porta za backoffice: podaci u memoriji, sa
-// kasnjenjem i okidacem greske sledeceg zahteva.
+// kasnjenjem i okidacima greske sledeceg zahteva (tehnicke i serverskog
+// odbijanja).
 //
 // Po istom ugovoru kao mobilni fake repo: pravila NISU ovde (sta stigne,
 // to se upise); ModerationBloc ih proverava domenom pre poziva. Tri sobe
 // iz demoa, svaka sa svojim predlozima i glasovima.
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
 import 'demo.dart';
@@ -30,6 +32,16 @@ final class FakeModerationRepository implements ProposalRepository {
   /// Okidac: sledeci zahtev (bilo koji) baca izuzetak, pa se resetuje.
   /// Ekran ga pali stavkom menija "Simuliraj gresku".
   bool failNext = false;
+
+  /// Okidac odbijanja: sledeci zahtev (bilo koji) baca [ServerRejected] sa
+  /// [rejectionReason], pa se resetuje. Razlog odbijanja Bloc nosi u stanju
+  /// i sam osvezava prikaz — demonstracija tipizovane greske bez servera.
+  bool failNextRejected = false;
+
+  /// Demo razlog odbijanja za [failNextRejected] (menja se po zelji).
+  ApiError rejectionReason = const ApiError(
+    code: ErrorCodes.sessionExpired,
+  );
 
   final List<Room> _rooms = [];
   final Map<RoomId, RoomSnapshot> _snapshots = {};
@@ -136,9 +148,14 @@ final class FakeModerationRepository implements ProposalRepository {
     return room;
   }
 
-  /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska.
+  /// Zajednicki pocetak svakog zahteva: kasnjenje, pa jednokratna greska
+  /// (prvo odbijanje, pa tehnicka — obe se resetuju posle prvog hica).
   Future<void> _request() async {
     await Future<void>.delayed(delay);
+    if (failNextRejected) {
+      failNextRejected = false;
+      throw ServerRejected(rejectionReason);
+    }
     if (failNext) {
       failNext = false;
       throw Exception('Simulirana greska');
