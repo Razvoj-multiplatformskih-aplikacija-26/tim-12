@@ -7,7 +7,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
-import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_mobile/data/fake_proposal_repository.dart';
 import 'package:radioroom_mobile/main.dart';
 import 'package:radioroom_mobile/router.dart';
