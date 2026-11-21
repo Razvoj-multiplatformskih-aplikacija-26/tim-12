@@ -139,13 +139,15 @@ Odbijen poziv nosi kod i podatke pravila (`{code, data}`, bez teksta); poruku na
 
 ## Ugovor klijent–server (KT2)
 
-Paket `packages/contract` (čist Dart, radi na VM-u i u pregledaču): `ApiError{code, data}`, DTO zahteva/odgovora, prevod domen↔ugovor na jednom mestu. Server rute (`apps/server`, Relic 1.2.0): `GET /health`, `POST /auth/login|logout`, `GET /auth/me`, `GET /rooms`, `GET /rooms/:id`, `POST /rooms`, `POST /rooms/:id/proposals|votes|close`, `POST /rooms/:id/proposals/:pid/remove|withdraw`. Prijava ide u `Authorization: Bearer` headeru — server identitet čita samo iz prijave, nikad iz tela zahteva.
+Ugovor je u `packages/contract` (čist Dart, bez zavisnosti — ne uvozi domen, Flutter ni `dart:io`, što proverava `purity_test.dart`; radi na VM-u i u pregledaču): `ApiError{code, data}`, `ErrorCodes` sa HTTP statusom za svaki kôd, DTO zahteva i odgovora sa običnim poljima (ID-jevi i stanja kao stringovi, vremena ISO 8601 u UTC). Prevod domen↔ugovor, u oba smera i za greške, je na jednom mestu u `packages/mapping` (`proposal.toDto()`, `dto.toDomain()`, `apiErrorFromRule`, `ruleErrorFromApi`); koriste ga i klijenti (`api_client`, `ui`) i server. Zavisnosti: `mapping` → `domain` + `contract`; `contract` ni od čega.
+
+Server rute (`apps/server`, Relic 1.2.0): `GET /health`, `POST /auth/login|logout`, `GET /auth/me`, `GET /rooms`, `GET /rooms/:id`, `POST /rooms`, `POST /rooms/:id/proposals|votes|close`, `POST /rooms/:id/proposals/:pid/remove|withdraw`. Prijava ide u `Authorization: Bearer` headeru — server identitet čita samo iz prijave, nikad iz tela zahteva.
 
 ## Odluke para (KT2)
 
 - Sesije su neprozirni tokeni (32 slučajna bajta, u bazi samo SHA-256 heš) sa TTL-om — odbačen JWT jer se ne može opozvati pre isteka; istekle sesije se brišu lenjo pri lookup-u.
 - Akcije su posebne rute (`…/remove`, `…/close`), a ne `PATCH {status}`: pravilo je prelaz stanja, klijent ne bira ciljno stanje.
-- Prevod ugovor↔domen živi unutar `packages/contract` (nema posebnog `mapping` paketa): jedno mesto za oba smera.
+- Prevod ugovor↔domen je u posebnom paketu `packages/mapping`, a ne u ugovoru: ugovor tako ne zna za domen (zahtev KT2), a i server i klijenti prevode istim kodom. Odbačeno: prevod u samom `contract`-u (ugovor bi morao da uvozi domen) i ručni JSON na serveru (dva mesta koja moraju da se slažu — razlika se vidi tek u radu).
 - Posle odbijanja klijent radi automatski reload (bez pritiska "Pokušaj ponovo"): odbrana pokazuje razlog + sveže stanje u jednom koraku.
 - Token stoji u bezbednom skladištu platforme (`flutter_secure_storage`), lozinka se nigde ne čuva; lažni repozitorijumi ostaju u repu za demo bez servera.
 - Odbačeno: zbir glasova umesto pojedinačnih u snimku sobe — menjao bi port Bloc-a, pa Bloc više ne bi bio isti nad lažnim podacima i nad serverom.
