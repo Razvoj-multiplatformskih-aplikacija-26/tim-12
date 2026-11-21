@@ -93,9 +93,11 @@ ProposalRuleError? ruleErrorFromApi(ApiError error) {
           ? null
           : InvalidVoteTarget(proposalId: ProposalId(proposalId));
     case ErrorCodes.alreadyVotedInRound:
-      final voterId = _id(data, 'voterId');
+      // Server salje samo roundId (pozivalac je uvek glasac, pa voterId
+      // ne ide na mrezu); domenski tip ga zahteva, a poruka ga ne koristi.
+      final voterId = _id(data, 'voterId') ?? '';
       final roundId = _id(data, 'roundId');
-      if (voterId == null || roundId == null) return null;
+      if (roundId == null) return null;
       return AlreadyVotedInRound(
         voterId: UserId(voterId),
         roundId: RoundId(roundId),

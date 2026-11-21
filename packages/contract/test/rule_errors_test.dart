@@ -79,6 +79,17 @@ void main() {
     );
   });
 
+  test('already_voted sa serverskog zice (samo roundId) daje tip', () {
+    final back = ruleErrorFromApi(
+      const ApiError(
+        code: ErrorCodes.alreadyVotedInRound,
+        data: {'roundId': 'rd1'},
+      ),
+    );
+    expect(back, isA<AlreadyVotedInRound>());
+    expect((back as AlreadyVotedInRound).roundId, const RoundId('rd1'));
+  });
+
   test('nepoznat kôd daje null (stara verzija ne pada)', () {
     expect(
       ruleErrorFromApi(const ApiError(code: 'buduce_pravilo')),
