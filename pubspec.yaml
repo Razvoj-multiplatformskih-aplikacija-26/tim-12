@@ -14,6 +14,7 @@ workspace:
   - packages/domain
   - packages/contract
   - packages/blocs
+  - packages/api_client
   - packages/ui
   - apps/mobile
   - apps/backoffice

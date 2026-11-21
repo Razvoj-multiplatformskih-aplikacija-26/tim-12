@@ -43,6 +43,8 @@ dependencies:
     path: ../../packages/domain
   radioroom_blocs:
     path: ../../packages/blocs
+  radioroom_api_client:
+    path: ../../packages/api_client
   radioroom_ui:
     path: ../../packages/ui
   # Ugovor {code, data}: lažni repozitorijum njime pravi demo razlog
