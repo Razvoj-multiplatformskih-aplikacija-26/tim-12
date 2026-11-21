@@ -18,6 +18,8 @@ dependencies:
     path: ../contract
   radioroom_domain:
     path: ../domain
+  radioroom_mapping:
+    path: ../mapping
   http: ^1.6.0
 
 dev_dependencies:

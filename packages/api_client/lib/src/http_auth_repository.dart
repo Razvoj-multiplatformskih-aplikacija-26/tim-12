@@ -6,6 +6,7 @@
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 import 'api_client.dart';
 

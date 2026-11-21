@@ -1,5 +1,5 @@
 name: radioroom_contract
-description: "RadioRoom zajednicki ugovor klijent-servera: ApiError, DTO i prevod domen-ugovor. Cist Dart paket, bez Flutter zavisnosti."
+description: "RadioRoom zajednicki ugovor klijent-servera: ApiError, kodovi gresaka i DTO. Cist Dart paket, bez domena, Flutter-a i dart:io."
 version: 0.1.0
 
 # Privatan paket: nikad se ne objavljuje na pub.dev.
@@ -11,9 +11,8 @@ environment:
 # Clan workspace-a: zavisnosti se ne resavaju posebno, vec kroz koren.
 resolution: workspace
 
-dependencies:
-  radioroom_domain:
-    path: ../domain
+# Namerno bez zavisnosti: ugovor ne uvozi domen (prevod je u
+# `packages/mapping`), Flutter ni `dart:io`. Proverava `purity_test.dart`.
 
 dev_dependencies:
   lints: ^6.1.0

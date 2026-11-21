@@ -1,50 +1,13 @@
 // Citanje soba nad pravim serverom i pocetnim podacima.
 import 'dart:convert';
 
-import 'package:radioroom_domain/radioroom_domain.dart';
-import 'package:radioroom_server/radioroom_server.dart';
 import 'package:test/test.dart';
 
 import 'support/test_server.dart';
 
 void main() {
-  group('kodovi stanja', () {
-    test('predlog: kod i nazad daju isto stanje', () {
-      final playedAt = DateTime.utc(2026, 11, 20, 12);
-      for (final status in <ProposalStatus>[
-        const Proposed(),
-        const InVoting(),
-        const Winner(),
-        Played(playedAt),
-        const Rejected(),
-        const Removed(),
-      ]) {
-        final back = proposalStatusFromCode(
-          proposalStatusCode(status),
-          playedAt,
-        );
-        expect(sameProposalStatus(back, status), isTrue, reason: '$status');
-      }
-    });
-
-    test('soba: kod i nazad daju isto stanje', () {
-      for (final status in <RoomStatus>[
-        const RoomOpen(),
-        const RoomPaused(),
-        const RoomClosed(),
-      ]) {
-        expect(
-          roomStatusFromCode(roomStatusCode(status)).runtimeType,
-          status.runtimeType,
-        );
-      }
-    });
-
-    test('nepoznat kod je greska, ne tiho podrazumevano stanje', () {
-      expect(() => proposalStatusFromCode('x', null), throwsFormatException);
-      expect(() => roomStatusFromCode('x'), throwsFormatException);
-    });
-  });
+  // Kodovi stanja (tip <-> string, nepoznat kod) testirani su u
+  // `packages/mapping` — server koristi isti prevod za bazu i mrezu.
 
   group('GET /rooms', () {
     test('trazi prijavu', () async {

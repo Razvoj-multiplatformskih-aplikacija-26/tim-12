@@ -1,10 +1,9 @@
 // DTO: oblik tela i odgovora uskladjen sa serverom.
 //
-// Prijava prati `userJson` i login-odgovor iz `apps/server` (`{token,
-// expiresAt, user: {id, displayName, role}}`); predlog, glas, soba, runda
-// i snimak sobe prate port `ProposalRepository`/`RoomSnapshot` iz `blocs`.
+// Prijava prati login-odgovor iz `apps/server` (`{token, expiresAt, user:
+// {id, displayName, role}}`); predlog, glas, soba, runda i snimak sobe prate
+// odgovore ruta soba. Prevod u domen testira `packages/mapping`.
 import 'package:radioroom_contract/radioroom_contract.dart';
-import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:test/test.dart';
 
 void main() {
@@ -28,36 +27,36 @@ void main() {
         const LoginRequest(username: 'a', password: 'b').toJson()['app'],
         'mobile',
       );
+      expect(
+        LoginRequest.fromJson({'username': 'a', 'password': 'b'}).app,
+        AppTarget.mobile,
+      );
     });
 
-    test('LoginResponse cita token, rok i korisnika', () {
-      final response = LoginResponse.fromJson({
+    test('LoginRequest baca za nepoznatu aplikaciju', () {
+      expect(
+        () => LoginRequest.fromJson({
+          'username': 'a',
+          'password': 'b',
+          'app': 'televizor',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('LoginResponse krug json<->dto', () {
+      final json = {
         'token': 't-1',
         'expiresAt': '2026-11-20T12:00:00.000Z',
         'user': {'id': 'u1', 'displayName': 'Ana', 'role': 'listener'},
-      });
+      };
+
+      final response = LoginResponse.fromJson(json);
 
       expect(response.token, 't-1');
-      expect(response.user.displayName, 'Ana');
-      expect(response.user.role, Role.listener);
+      expect(response.user.role, RoleCodes.listener);
       expect(response.user.blocked, isFalse);
-    });
-
-    test('UserDto krug domen<->ugovor', () {
-      const user = User(
-        id: UserId('u1'),
-        displayName: 'Ana',
-        role: Role.moderator,
-      );
-
-      final dto = UserDto.fromDomain(user);
-      expect(dto.toJson(), {
-        'id': 'u1',
-        'displayName': 'Ana',
-        'role': 'moderator',
-      });
-      expect(dto.toDomain(), user);
-      expect(UserDto.fromJson(dto.toJson()).toDomain(), user);
+      expect(response.toJson(), json);
     });
 
     test('UserDto baca za nepoznatu ulogu', () {
@@ -72,120 +71,150 @@ void main() {
     });
   });
 
-  group('predlozi i glasovi', () {
-    test('ProposalDto krug domen<->ugovor za svako stanje', () {
-      final statuses = <ProposalStatus>[
-        const Proposed(),
-        const InVoting(),
-        const Winner(),
-        Played(DateTime.utc(2026, 11, 20, 11, 40)),
-        const Rejected(),
-        const Removed(),
-      ];
-      for (final status in statuses) {
-        final proposal = Proposal(
-          id: const ProposalId('p1'),
-          roomId: const RoomId('r1'),
-          song: const Song(title: 'Fuego', artist: 'Severina'),
-          proposedBy: const UserId('u1'),
-          proposedAt: DateTime.utc(2026, 11, 20, 10),
-          status: status,
-        );
-
-        final back = ProposalDto.fromJson(
-          ProposalDto.fromDomain(proposal).toJson(),
-        ).toDomain();
-        expect(back, proposal);
-      }
+  group('pesme, predlozi i glasovi', () {
+    test('SongDto salje samo polja koja postoje', () {
+      expect(const SongDto(title: 'Fuego', artist: 'Severina').toJson(), {
+        'title': 'Fuego',
+        'artist': 'Severina',
+      });
+      final full = SongDto.fromJson({
+        'title': 'Fuego',
+        'artist': 'Severina',
+        'album': 'Dobro jutro',
+        'durationMs': 180000,
+        'externalLink': 'https://example.com/fuego',
+        'coverUrl': null,
+      });
+      expect(full.album, 'Dobro jutro');
+      expect(full.durationMs, 180000);
+      expect(full.toJson().keys, isNot(contains('coverUrl')));
     });
 
-    test('ProposalDto baca za nepoznato stanje', () {
+    test('SongDto baca za pogresan tip opcionog polja', () {
       expect(
-        () => ProposalDto.fromJson({
-          'id': 'p1',
-          'roomId': 'r1',
-          'song': {'title': 'T', 'artist': 'A'},
-          'proposedBy': 'u1',
-          'proposedAt': '2026-11-20T10:00:00.000Z',
-          'status': 'leprsa_u_vazduhu',
-        }),
+        () => SongDto.fromJson({'title': 'T', 'artist': 'A', 'album': 5}),
+        throwsFormatException,
+      );
+      expect(
+        () =>
+            SongDto.fromJson({'title': 'T', 'artist': 'A', 'durationMs': '3'}),
+        throwsFormatException,
+      );
+    });
+
+    test('ProposalDto krug json<->dto, playedAt samo uz played', () {
+      final json = {
+        'id': 'p1',
+        'roomId': 'r1',
+        'song': {'title': 'Fuego', 'artist': 'Severina'},
+        'proposedBy': 'u1',
+        'proposedAt': '2026-11-20T10:00:00.000Z',
+        'status': 'played',
+        'playedAt': '2026-11-20T11:40:00.000Z',
+      };
+
+      final dto = ProposalDto.fromJson(json);
+
+      expect(dto.status, ProposalStatusCodes.played);
+      expect(dto.playedAt, DateTime.utc(2026, 11, 20, 11, 40));
+      expect(dto.toJson(), json);
+    });
+
+    test('ProposalDto baca za nepoznato stanje i played bez vremena', () {
+      final base = {
+        'id': 'p1',
+        'roomId': 'r1',
+        'song': {'title': 'T', 'artist': 'A'},
+        'proposedBy': 'u1',
+        'proposedAt': '2026-11-20T10:00:00.000Z',
+      };
+      expect(
+        () => ProposalDto.fromJson({...base, 'status': 'leprsa_u_vazduhu'}),
+        throwsFormatException,
+      );
+      expect(
+        () => ProposalDto.fromJson({...base, 'status': 'played'}),
         throwsFormatException,
       );
     });
 
     test('CreateProposalRequest ne salje identitet predlagaca', () {
       final body = const CreateProposalRequest(
-        roomId: RoomId('r1'),
-        title: 'Fuego',
-        artist: 'Severina',
+        song: SongDto(title: 'Fuego', artist: 'Severina'),
       ).toJson();
 
-      expect(body['roomId'], 'r1');
-      expect((body['song'] as Map)['title'], 'Fuego');
-      expect(body.keys, isNot(contains('proposedBy')));
+      expect(body, {
+        'song': {'title': 'Fuego', 'artist': 'Severina'},
+      });
     });
 
-    test('VoteDto krug domen<->ugovor', () {
-      final vote = Vote(
-        id: const VoteId('v1'),
-        roundId: const RoundId('rd1'),
-        proposalId: const ProposalId('p1'),
-        voterId: const UserId('u1'),
-        castAt: DateTime.utc(2026, 11, 20, 10, 5),
-      );
-
-      final back = VoteDto.fromJson(VoteDto.fromDomain(vote).toJson());
-      expect(back.toDomain(), vote);
+    test('VoteDto krug json<->dto', () {
+      final json = {
+        'id': 'v1',
+        'roundId': 'rd1',
+        'proposalId': 'p1',
+        'voterId': 'u1',
+        'castAt': '2026-11-20T10:05:00.000Z',
+      };
+      expect(VoteDto.fromJson(json).toJson(), json);
     });
 
-    test('CastVoteRequest salje rundu i predlog', () {
+    test('CastVoteRequest salje rundu i predlog, trazi oba', () {
+      expect(const CastVoteRequest(roundId: 'rd1', proposalId: 'p1').toJson(), {
+        'roundId': 'rd1',
+        'proposalId': 'p1',
+      });
       expect(
-        const CastVoteRequest(
-          roundId: RoundId('rd1'),
-          proposalId: ProposalId('p1'),
-        ).toJson(),
-        {'roundId': 'rd1', 'proposalId': 'p1'},
+        () => CastVoteRequest.fromJson({'roundId': 'rd1'}),
+        throwsFormatException,
       );
+    });
+
+    test('CatalogSearchResponse cita listu pesama', () {
+      final response = CatalogSearchResponse.fromJson({
+        'songs': [
+          {'title': 'Fuego', 'artist': 'Severina'},
+        ],
+      });
+      expect(response.songs.single.title, 'Fuego');
     });
   });
 
   group('sobe, runde, snimak', () {
-    test('RoomDto krug domen<->ugovor za svako stanje sobe', () {
-      for (final status in [const RoomOpen(), const RoomPaused(), const RoomClosed()]) {
-        const room = Room(
-          id: RoomId('r1'),
-          name: 'Zurka',
-          hostId: UserId('u9'),
-        );
-        final withStatus = room.withStatus(status);
-
-        final back = RoomDto.fromJson(
-          RoomDto.fromDomain(withStatus).toJson(),
-        ).toDomain();
-        expect(back, withStatus);
-      }
-    });
-
-    test('RoundDto krug domen<->ugovor', () {
-      final round = Round(
-        id: const RoundId('rd1'),
-        roomId: const RoomId('r1'),
-        startsAt: DateTime.utc(2026, 11, 20, 10),
-        endsAt: DateTime.utc(2026, 11, 20, 10, 5),
-      );
-
-      final back = RoundDto.fromJson(RoundDto.fromDomain(round).toJson());
-      expect(back.toDomain(), round);
-    });
-
-    test('RoomSnapshotDto nosi isti oblik kao port RoomSnapshot', () {
-      final dto = RoomSnapshotDto.fromJson({
-        'room': {
+    test('RoomDto prihvata samo dogovorena stanja', () {
+      for (final status in RoomStatusCodes.all) {
+        final json = {
           'id': 'r1',
           'name': 'Zurka',
           'hostId': 'u9',
-          'status': 'open',
-        },
+          'status': status,
+        };
+        expect(RoomDto.fromJson(json).toJson(), json);
+      }
+      expect(
+        () => RoomDto.fromJson({
+          'id': 'r1',
+          'name': 'Zurka',
+          'hostId': 'u9',
+          'status': 'srusena',
+        }),
+        throwsFormatException,
+      );
+    });
+
+    test('vremena idu na mrezu u UTC-u', () {
+      final round = RoundDto(
+        id: 'rd1',
+        roomId: 'r1',
+        startsAt: DateTime.utc(2026, 11, 20, 10).toLocal(),
+        endsAt: DateTime.utc(2026, 11, 20, 10, 5),
+      );
+      expect(round.toJson()['startsAt'], '2026-11-20T10:00:00.000Z');
+    });
+
+    test('RoomSnapshotDto krug json<->dto', () {
+      final json = {
+        'room': {'id': 'r1', 'name': 'Zurka', 'hostId': 'u9', 'status': 'open'},
         'round': {
           'id': 'rd1',
           'roomId': 'r1',
@@ -211,14 +240,22 @@ void main() {
             'castAt': '2026-11-20T10:02:00.000Z',
           },
         ],
-      });
+      };
 
-      final snapshot = dto.toDomain();
-      expect(snapshot.room.id, const RoomId('r1'));
-      expect(snapshot.round.id, const RoundId('rd1'));
-      expect(snapshot.proposals, hasLength(1));
-      expect(snapshot.proposals.first.song.title, 'Fuego');
-      expect(snapshot.votes, hasLength(1));
+      final dto = RoomSnapshotDto.fromJson(json);
+
+      expect(dto.proposals.single.song.title, 'Fuego');
+      expect(dto.votes, hasLength(1));
+      expect(dto.toJson(), json);
+    });
+
+    test('RoomListResponse cita sobe', () {
+      final list = RoomListResponse.fromJson({
+        'rooms': [
+          {'id': 'r1', 'name': 'Zurka', 'hostId': 'u9', 'status': 'paused'},
+        ],
+      });
+      expect(list.rooms.single.status, RoomStatusCodes.paused);
     });
   });
 }

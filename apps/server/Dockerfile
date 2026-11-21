@@ -12,13 +12,19 @@ RUN printf '%s\n' \
   '  sdk: ^3.6.0' \
   'workspace:' \
   '  - packages/domain' \
+  '  - packages/contract' \
+  '  - packages/mapping' \
   '  - apps/server' > pubspec.yaml
 COPY pubspec.lock ./
 COPY packages/domain/pubspec.yaml packages/domain/
+COPY packages/contract/pubspec.yaml packages/contract/
+COPY packages/mapping/pubspec.yaml packages/mapping/
 COPY apps/server/pubspec.yaml apps/server/
 RUN dart pub get
 
 COPY packages/domain packages/domain
+COPY packages/contract packages/contract
+COPY packages/mapping packages/mapping
 COPY apps/server apps/server
 RUN dart compile exe apps/server/bin/server.dart -o /server
 

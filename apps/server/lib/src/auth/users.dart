@@ -1,6 +1,7 @@
 // Citanje korisnika iz baze, kao domenskih `User` objekata.
 import 'package:postgres/postgres.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 /// Kolone korisnika u redosledu koji ocekuje [userFromRow].
 const userColumns = 'u.id, u.display_name, u.role, u.blocked';
@@ -10,7 +11,9 @@ const userColumns = 'u.id, u.display_name, u.role, u.blocked';
 User userFromRow(List<Object?> row, [int offset = 0]) => User(
   id: UserId(row[offset]! as String),
   displayName: row[offset + 1]! as String,
-  role: Role.values.byName(row[offset + 2]! as String),
+  role:
+      roleFromCode(row[offset + 2]) ??
+      (throw FormatException('Nepoznata uloga: ${row[offset + 2]}')),
   blocked: row[offset + 3]! as bool,
 );
 

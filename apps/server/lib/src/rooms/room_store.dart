@@ -6,6 +6,7 @@
 // postaju sealed stanja domena.
 import 'package:postgres/postgres.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 /// Sve sto klijent treba o jednoj sobi: soba, tekuca runda, svi predlozi
 /// (i pusteni — istorija za pravilo „nije pustena u poslednjih sat“) i
@@ -83,7 +84,7 @@ Room roomFromRow(List<Object?> row) => Room(
   id: RoomId(row[0]! as String),
   name: row[1]! as String,
   hostId: UserId(row[2]! as String),
-  status: roomStatusFromCode(row[3]! as String),
+  status: _roomStatusFromRow(row[3]),
 );
 
 /// Red sa kolonama runde u domenski `Round`.
@@ -109,7 +110,7 @@ Proposal proposalFromRow(List<Object?> row) => Proposal(
   ),
   proposedBy: UserId(row[8]! as String),
   proposedAt: row[9]! as DateTime,
-  status: proposalStatusFromCode(row[10]! as String, row[11] as DateTime?),
+  status: _proposalStatusFromRow(row[10], row[11]),
 );
 
 /// Red sa kolonama glasa u domenski `Vote`.
@@ -121,42 +122,17 @@ Vote voteFromRow(List<Object?> row) => Vote(
   castAt: row[4]! as DateTime,
 );
 
-/// Kod stanja predloga u bazi (i na mrezi) za domensko stanje.
-String proposalStatusCode(ProposalStatus status) => switch (status) {
-  Proposed() => 'proposed',
-  InVoting() => 'in_voting',
-  Winner() => 'winner',
-  Played() => 'played',
-  Rejected() => 'rejected',
-  Removed() => 'removed',
-};
+// Stanja u bazi su isti tekstualni kodovi kao na mrezi; prevod tip <-> kod
+// je u `packages/mapping` (`proposalStatusToCode`, `roomStatusFromCode`…).
+// Nepoznat kod u redu je kvar baze, ne tiho podrazumevano stanje.
 
-/// Domensko stanje predloga iz koda; `played` nosi trenutak pustanja.
-ProposalStatus proposalStatusFromCode(String code, DateTime? playedAt) =>
-    switch (code) {
-      'proposed' => const Proposed(),
-      'in_voting' => const InVoting(),
-      'winner' => const Winner(),
-      'played' => Played(playedAt!),
-      'rejected' => const Rejected(),
-      'removed' => const Removed(),
-      _ => throw FormatException('Nepoznato stanje predloga: $code'),
-    };
+ProposalStatus _proposalStatusFromRow(Object? code, Object? playedAt) =>
+    proposalStatusFromCode(code! as String, playedAt: playedAt as DateTime?) ??
+    (throw FormatException('Nepoznato stanje predloga: $code'));
 
-/// Kod stanja sobe u bazi (i na mrezi) za domensko stanje.
-String roomStatusCode(RoomStatus status) => switch (status) {
-  RoomOpen() => 'open',
-  RoomPaused() => 'paused',
-  RoomClosed() => 'closed',
-};
-
-/// Domensko stanje sobe iz koda.
-RoomStatus roomStatusFromCode(String code) => switch (code) {
-  'open' => const RoomOpen(),
-  'paused' => const RoomPaused(),
-  'closed' => const RoomClosed(),
-  _ => throw FormatException('Nepoznato stanje sobe: $code'),
-};
+RoomStatus _roomStatusFromRow(Object? code) =>
+    roomStatusFromCode(code) ??
+    (throw FormatException('Nepoznato stanje sobe: $code'));
 
 /// Zakljucava red sobe do kraja transakcije i vraca sobu, ili `null` kad ne
 /// postoji. Svi upisi u jednu sobu (i zatvaranje runde) idu jedan za drugim,
@@ -191,7 +167,7 @@ Future<void> insertProposal(Session tx, Proposal proposal) async {
       'album': song.album,
       'by': proposal.proposedBy.value,
       'at': proposal.proposedAt,
-      'status': proposalStatusCode(proposal.status),
+      'status': proposalStatusToCode(proposal.status),
       'played': switch (proposal.status) {
         Played(:final playedAt) => playedAt,
         _ => null,
@@ -209,7 +185,7 @@ Future<void> setProposalStatus(
   assert(status is! Played, 'pustanje nosi vreme; nije deo KT2');
   await tx.execute(
     Sql.named('UPDATE proposals SET status = @status WHERE id = @id'),
-    parameters: {'id': id.value, 'status': proposalStatusCode(status)},
+    parameters: {'id': id.value, 'status': proposalStatusToCode(status)},
   );
 }
 
@@ -264,7 +240,7 @@ Future<void> insertRoom(Session tx, Room room) async {
       'id': room.id.value,
       'name': room.name,
       'host': room.hostId.value,
-      'status': roomStatusCode(room.status),
+      'status': roomStatusToCode(room.status),
     },
   );
 }
@@ -273,6 +249,6 @@ Future<void> insertRoom(Session tx, Room room) async {
 Future<void> setRoomStatus(Session tx, RoomId id, RoomStatus status) async {
   await tx.execute(
     Sql.named('UPDATE rooms SET status = @status WHERE id = @id'),
-    parameters: {'id': id.value, 'status': roomStatusCode(status)},
+    parameters: {'id': id.value, 'status': roomStatusToCode(status)},
   );
 }

@@ -100,7 +100,7 @@ Predlog: `{"id", "roomId", "song", "proposedBy", "proposedAt", "status"}`, a pu�
 
 **Istovremeni pozivi.** Svaki pristup sobi zaključa red sobe (`SELECT … FOR UPDATE`) do kraja transakcije, pa se upisi u jednu sobu i zatvaranje runde izvršavaju jedan za drugim: od deset istovremenih predloga preko limita prolazi tačno onoliko koliko pravilo dozvoljava, a runda se zatvara jednom. Pravilo „jedan glas po rundi“ dodatno čuva baza (`UNIQUE(round_id, voter_id)`).
 
-Greške pravila (kôd i podaci iz domenske greške, jedno mesto: `lib/src/http/rule_errors.dart`):
+Greške pravila (kôd i podaci iz domenske greške; prevod je u `packages/mapping` (`apiErrorFromRule`), isti koji klijent koristi za poruku, a HTTP status daje `ErrorCodes.httpStatus` iz ugovora):
 
 | Status | `code` | `data` | Kada |
 | --- | --- | --- | --- |

@@ -6,6 +6,7 @@
 // automatski menja i poruku.
 import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 /// Tekst poruke za prekrsaj pravila. Exhaustive switch nad sealed tipom:
 /// novo pravilo u domenu je greska kompajliranja ovde dok se ne doda poruka.

@@ -12,6 +12,7 @@
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 import 'api_client.dart';
 
@@ -26,9 +27,9 @@ final class HttpProposalRepository implements ProposalRepository {
   @override
   Future<List<Room>> loadRooms() async {
     final json = await _api.getJson('/rooms');
-    final rooms = json['rooms'];
-    if (rooms is! List) throw Exception('Neocekivan odgovor: nema rooms.');
-    return [for (final room in rooms) RoomDto.fromJson(_map(room)).toDomain()];
+    return [
+      for (final room in RoomListResponse.fromJson(json).rooms) room.toDomain(),
+    ];
   }
 
   @override
@@ -52,17 +53,10 @@ final class HttpProposalRepository implements ProposalRepository {
     required Song song,
     required UserId proposedBy,
   }) async {
-    // Pun Song (i opciona polja koja ugovor ne nosi) — server ih prihvata.
-    final json = await _api.postJson('/rooms/${roomId.value}/proposals', {
-      'song': {
-        'title': song.title,
-        'artist': song.artist,
-        if (song.externalLink != null) 'externalLink': song.externalLink,
-        if (song.durationMs != null) 'durationMs': song.durationMs,
-        if (song.coverUrl != null) 'coverUrl': song.coverUrl,
-        if (song.album != null) 'album': song.album,
-      },
-    });
+    final json = await _api.postJson(
+      '/rooms/${roomId.value}/proposals',
+      CreateProposalRequest(song: song.toDto()).toJson(),
+    );
     return ProposalDto.fromJson(json).toDomain();
   }
 
@@ -78,7 +72,10 @@ final class HttpProposalRepository implements ProposalRepository {
     }
     final json = await _api.postJson(
       '/rooms/${roomId.value}/votes',
-      CastVoteRequest(roundId: roundId, proposalId: proposalId).toJson(),
+      CastVoteRequest(
+        roundId: roundId.value,
+        proposalId: proposalId.value,
+      ).toJson(),
     );
     return VoteDto.fromJson(json).toDomain();
   }
@@ -110,14 +107,5 @@ final class HttpProposalRepository implements ProposalRepository {
       CreateRoomRequest(name: name).toJson(),
     );
     return RoomDto.fromJson(json).toDomain();
-  }
-
-  /// JSON objekat u `Map<String, Object?>` (element liste odgovora).
-  Map<String, Object?> _map(Object? json) {
-    if (json is Map<String, Object?>) return json;
-    if (json is Map) {
-      return {for (final entry in json.entries) '${entry.key}': entry.value};
-    }
-    throw Exception('Neocekivan odgovor servera.');
   }
 }

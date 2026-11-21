@@ -16,6 +16,7 @@ import 'package:http/http.dart' as http;
 import 'package:radioroom_blocs/radioroom_blocs.dart';
 import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
+import 'package:radioroom_mapping/radioroom_mapping.dart';
 
 /// Adresa servera; menja se `--dart-define=API_BASE_URL=<url>` pri
 /// pokretanju, bez izmene koda (isti build radi lokalno i na vebu).
