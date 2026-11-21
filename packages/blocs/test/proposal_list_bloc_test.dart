@@ -6,6 +6,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:test/test.dart';
 
@@ -350,5 +351,86 @@ void main() {
       expect: () => [_ruleError<RoomNotOpen>()],
       verify: (_) => verifyNoVote(),
     );
+  });
+
+  group('serversko odbijanje', () {
+    final snapshot = _snapshot(proposals: [_proposal('p1')]);
+    const rejection = ApiError(
+      code: ErrorCodes.alreadyVotedInRound,
+      data: {'voterId': 'u1', 'roundId': 'rd1'},
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'odbijen glas: razlog u stanju, Bloc sam osvezava sobu',
+      setUp: () {
+        when(
+          () => repository.vote(
+            roundId: any(named: 'roundId'),
+            proposalId: any(named: 'proposalId'),
+            voterId: any(named: 'voterId'),
+          ),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRoom(_roomId)).thenAnswer(
+          (_) async => snapshot,
+        );
+      },
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(const VoteCast(ProposalId('p1'))),
+      expect: () => [const ProposalsError(reason: rejection), _loaded(snapshot)],
+      verify: (_) => verify(() => repository.loadRoom(_roomId)).called(1),
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'odbijen predlog: razlog u stanju, port ponovo ucitava sobu',
+      setUp: () {
+        when(
+          () => repository.propose(
+            roomId: any(named: 'roomId'),
+            song: any(named: 'song'),
+            proposedBy: any(named: 'proposedBy'),
+          ),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRoom(_roomId)).thenAnswer(
+          (_) async => snapshot,
+        );
+      },
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(const ProposalAdded(_song)),
+      expect: () => [const ProposalsError(reason: rejection), _loaded(snapshot)],
+      verify: (_) => verify(() => repository.loadRoom(_roomId)).called(1),
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'kvar osvezavanja posle odbijanja: razlog ostaje na ekranu',
+      setUp: () {
+        when(
+          () => repository.propose(
+            roomId: any(named: 'roomId'),
+            song: any(named: 'song'),
+            proposedBy: any(named: 'proposedBy'),
+          ),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRoom(_roomId)).thenThrow(Exception('mreza'));
+      },
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(const ProposalAdded(_song)),
+      expect: () => [const ProposalsError(reason: rejection)],
+      verify: (_) => verify(() => repository.loadRoom(_roomId)).called(1),
+    );
+
+    test('Equatable: razlog ucestvuje u jednakosti stanja', () {
+      expect(
+        const ProposalsError(reason: rejection),
+        const ProposalsError(reason: rejection),
+      );
+      expect(const ProposalsError(), const ProposalsError(reason: null));
+      expect(
+        const ProposalsError(),
+        isNot(const ProposalsError(reason: rejection)),
+      );
+    });
   });
 }

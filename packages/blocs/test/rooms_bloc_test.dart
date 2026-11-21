@@ -7,6 +7,7 @@
 import 'package:bloc_test/bloc_test.dart';
 import 'package:mocktail/mocktail.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:test/test.dart';
 
@@ -99,5 +100,46 @@ void main() {
         );
       },
     );
+  });
+
+  group('serversko odbijanje', () {
+    const rejection = ApiError(code: ErrorCodes.roomNameEmpty);
+
+    blocTest<RoomsBloc, RoomsState>(
+      'odbijeno pravljenje sobe: razlog u stanju, lista se sam osvezava',
+      build: build,
+      seed: () => const RoomsLoaded(rooms: [_room]),
+      setUp: () {
+        when(
+          () => repository.createRoom(
+            name: any(named: 'name'),
+            hostId: any(named: 'hostId'),
+          ),
+        ).thenThrow(const ServerRejected(rejection));
+        when(() => repository.loadRooms()).thenAnswer(
+          (_) async => const [_room],
+        );
+      },
+      act: (bloc) => bloc.add(const RoomCreated('Nova')),
+      expect: () => [
+        const RoomsError(reason: rejection),
+        const RoomsLoaded(rooms: [_room]),
+      ],
+      verify: (_) {
+        verify(() => repository.loadRooms()).called(1);
+      },
+    );
+
+    test('Equatable: razlog ucestvuje u jednakosti stanja', () {
+      expect(
+        const RoomsError(reason: rejection),
+        const RoomsError(reason: rejection),
+      );
+      expect(const RoomsError(), const RoomsError(reason: null));
+      expect(
+        const RoomsError(),
+        isNot(const RoomsError(reason: rejection)),
+      );
+    });
   });
 }

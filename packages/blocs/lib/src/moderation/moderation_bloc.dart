@@ -8,6 +8,7 @@ import 'package:radioroom_domain/radioroom_domain.dart';
 
 import '../ports/proposal_repository.dart';
 import '../ports/room_snapshot.dart';
+import '../ports/server_rejected.dart';
 import 'moderation_event.dart';
 import 'moderation_state.dart';
 
@@ -34,6 +35,11 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
     emit(const ModerationLoading());
     try {
       emit(ModerationLoaded(rooms: await _repository.loadRooms()));
+    } on ServerRejected catch (rejected) {
+      // Odbijeno je ucitavanje: automatski reload bi isla u petlju
+      // (npr. istekla sesija). Razlog ide u stanje, ekran nudi "Pokusaj
+      // ponovo" — isto kao odbijanje akcije, samo bez osvezavanja.
+      emit(ModerationError(reason: rejected.error));
     } on Exception {
       emit(const ModerationError());
     }
@@ -49,6 +55,8 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
     try {
       final snapshot = await _repository.loadRoom(roomId);
       emit(_loaded(rooms, snapshot));
+    } on ServerRejected catch (rejected) {
+      emit(ModerationError(reason: rejected.error));
     } on Exception {
       emit(const ModerationError());
     }
@@ -90,6 +98,11 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
           ),
         ),
       );
+    } on ServerRejected catch (rejected) {
+      // Server je odbio (npr. je predlog medjuvremeno vec uklonjen):
+      // razlog ide u stanje, a snimak sobe se sam osvezava.
+      emit(ModerationError(reason: rejected.error));
+      await _refreshRoom(loaded.rooms, snapshot.room.id, emit);
     } on Exception {
       emit(const ModerationError());
     }
@@ -128,8 +141,40 @@ final class ModerationBloc extends Bloc<ModerationEvent, ModerationState> {
                 ),
         ),
       );
+    } on ServerRejected catch (rejected) {
+      // Server je odbio (npr. je sobu medjuvremeno zatvorio host):
+      // razlog ide u stanje, a lista soba se sama osvezava.
+      emit(ModerationError(reason: rejected.error));
+      await _refreshRooms(loaded.snapshot, emit);
     } on Exception {
       emit(const ModerationError());
+    }
+  }
+
+  /// Osvezavanje snimka otvorene sobe posle odbijanja. Bez Loading-a —
+  /// razlog ostaje na ekranu dok port radi; tehnicki kvar osvezavanja ga
+  /// samo zadrzi (ekran i dalje nudi "Pokusaj ponovo").
+  Future<void> _refreshRoom(
+    List<Room> rooms,
+    RoomId roomId,
+    Emitter<ModerationState> emit,
+  ) async {
+    try {
+      emit(_loaded(rooms, await _repository.loadRoom(roomId)));
+    } on Exception {
+      // Razlog je vec na ekranu; nema sta da se zameni.
+    }
+  }
+
+  /// Osvezavanje liste soba posle odbijanja, uz ocuvan snimak otvorene.
+  Future<void> _refreshRooms(
+    RoomSnapshot? snapshot,
+    Emitter<ModerationState> emit,
+  ) async {
+    try {
+      emit(_loaded(await _repository.loadRooms(), snapshot));
+    } on Exception {
+      // Razlog je vec na ekranu; nema sta da se zameni.
     }
   }
 

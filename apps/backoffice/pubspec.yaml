@@ -43,10 +43,18 @@ dependencies:
     path: ../../packages/domain
   radioroom_blocs:
     path: ../../packages/blocs
+  radioroom_api_client:
+    path: ../../packages/api_client
   radioroom_ui:
     path: ../../packages/ui
+  # Ugovor {code, data}: lažni repozitorijum njime pravi demo razlog
+  # odbijanja (`ServerRejected`).
+  radioroom_contract:
+    path: ../../packages/contract
   flutter_bloc: ^9.1.1
   go_router: ^18.1.2
+  # Token u bezbednom skladistu platforme; lozinka se nikad ne cuva.
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

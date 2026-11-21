@@ -1,5 +1,8 @@
 // Poruke pravila: svaki tip greske daje srpski tekst sa podacima iz greske.
+// Serverska odbijanja: kod iz ugovora ({code, data}) bira poruku, sa
+// fallback-om za nepoznat kod — stara verzija ne pada na novi kod.
 import 'package:flutter_test/flutter_test.dart';
+import 'package:radioroom_contract/radioroom_contract.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 import 'package:radioroom_ui/radioroom_ui.dart';
 
@@ -113,5 +116,74 @@ void main() {
       'Runda je završena pre nego što je glas stigao — glas nije ubrojan. '
       'Pogledaj pobednika i glasaj u novoj rundi.',
     );
+  });
+
+  group('serverska odbijanja (serverMessage)', () {
+    test('mrezni kodovi: prijava i sesija', () {
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.invalidCredentials)),
+        'Neispravno korisničko ime ili lozinka. Probaj ponovo.',
+      );
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.unauthenticated)),
+        'Nisi prijavljen. Prijavi se pa nastavi.',
+      );
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.sessionExpired)),
+        'Sesija je istekla. Prijavi se ponovo.',
+      );
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.badRequest)),
+        'Zahtev nije ispravan. Proveri unos i probaj ponovo.',
+      );
+    });
+
+    test('kodovi pravila: poruka sa podacima iz samih podataka', () {
+      expect(
+        serverMessage(
+          const ApiError(
+            code: ErrorCodes.tooManyActiveProposals,
+            data: {'activeCount': 3, 'limit': 3},
+          ),
+        ),
+        'Dostignut je limit aktivnih predloga (3/3). Sačekaj ishod runde.',
+      );
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.userBlocked)),
+        'Tvoj nalog je blokiran.',
+      );
+      expect(
+        serverMessage(
+          const ApiError(
+            code: ErrorCodes.backofficeNotAllowed,
+            data: {'role': 'listener'},
+          ),
+        ),
+        'Backoffice je za moderatore. Ovo je nalog slušaoca — '
+            'prijavi se u mobilnoj aplikaciji.',
+      );
+    });
+
+    test('nepoznat kod i osteceni podaci: opsta poruka, ne pad', () {
+      expect(
+        serverMessage(const ApiError(code: 'buduci_kod_iz_kt4')),
+        'Server nije prihvatio zahtev. Probaj ponovo.',
+      );
+      // Kod pravila bez potrebnih podataka takodje pada na opstu poruku.
+      expect(
+        serverMessage(const ApiError(code: ErrorCodes.backofficeNotAllowed)),
+        'Server nije prihvatio zahtev. Probaj ponovo.',
+      );
+    });
+
+    test('svaki dogovoreni kod ima nepraznu poruku', () {
+      for (final code in ErrorCodes.all) {
+        expect(
+          serverMessage(ApiError(code: code)).isNotEmpty,
+          isTrue,
+          reason: 'Nema poruke za kod "$code".',
+        );
+      }
+    });
   });
 }

@@ -37,19 +37,33 @@ class _RoomsScreenState extends State<RoomsScreen> {
       },
       child: BlocListener<RoomsBloc, RoomsState>(
         listenWhen: (_, state) =>
-            state is RoomsLoaded && state.ruleError != null,
+            (state is RoomsLoaded && state.ruleError != null) ||
+            (state is RoomsError && state.reason != null),
         listener: (context, state) {
-          if (state case RoomsLoaded(ruleError: final error?)) {
-            ScaffoldMessenger.of(context)
-              ..hideCurrentSnackBar()
-              ..showSnackBar(SnackBar(content: Text(ruleMessage(error))));
-          }
+          final message = switch (state) {
+            RoomsLoaded(ruleError: final error?) => ruleMessage(error),
+            RoomsError(reason: final reason?) => serverMessage(reason),
+            _ => null,
+          };
+          if (message == null) return;
+          ScaffoldMessenger.of(context)
+            ..hideCurrentSnackBar()
+            ..showSnackBar(SnackBar(content: Text(message)));
         },
         child: DefaultTabController(
           length: 2,
           child: Scaffold(
             appBar: AppBar(
               title: const Text('RadioRoom'),
+              actions: [
+                // Odjava: brise token i vraca na prijavu (cuvar ruta).
+                IconButton(
+                  tooltip: 'Odjavi se',
+                  icon: const Icon(Icons.logout),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(const LogoutRequested()),
+                ),
+              ],
               bottom: const TabBar(
                 tabs: [
                   Tab(text: 'Napravi sobu'),
