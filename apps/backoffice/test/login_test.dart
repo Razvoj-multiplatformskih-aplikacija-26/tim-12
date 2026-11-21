@@ -68,7 +68,15 @@ void main() {
     final (router, _) = await _start(tester, '/login');
     await _loginAs(tester, 'ana', FakeAuthRepository.password);
     expect(_location(router), '/login');
-    expect(find.textContaining('Backoffice je za moderatore'), findsOneWidget);
+    // Tacna poruka odbijanja (ne podstring): staticki hint ekrana deli
+    // pocetak recenice, SnackBar nosi celu poruku pravila.
+    expect(
+      find.text(
+        'Backoffice je za moderatore. Ovo je nalog slušaoca — '
+        'prijavi se u mobilnoj aplikaciji.',
+      ),
+      findsOneWidget,
+    );
   });
 
   testWidgets('odjava cisti token i vraca na prijavu', (tester) async {
