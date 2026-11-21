@@ -39,9 +39,24 @@ endif()
 # Be cautious about adding new options here, as plugins use this function by
 # default. In most cases, you should add new options to specific targets instead
 # of modifying this function.
+include(CheckCXXCompilerFlag)
 function(APPLY_STANDARD_SETTINGS TARGET)
   target_compile_features(${TARGET} PUBLIC cxx_std_14)
   target_compile_options(${TARGET} PRIVATE -Wall -Werror)
+  # flutter_secure_storage_linux 1.2.3 venduje nlohmann/json 3.11.2, ciji
+  # zastareli `operator"" _json` (sa razmakom) novi kompajleri (GCC 15+,
+  # clang 19+) odbijaju pod -Werror. Nije nas kod — samo to jedno
+  # upozorenje spustamo sa error na warning. Upstream popravljen tek u
+  # paketu 3.0.0 (velika v10 migracija), pa bump ostaje za posle roka.
+  # Gard: na kompajlerima koji upozorenje ne poznaju flag se ne dodaje.
+  set(CMAKE_REQUIRED_FLAGS "-Werror")
+  check_cxx_compiler_flag("-Wno-error=deprecated-literal-operator"
+    HAS_WNO_ERROR_DEPRECATED_LITERAL_OPERATOR)
+  unset(CMAKE_REQUIRED_FLAGS)
+  if(HAS_WNO_ERROR_DEPRECATED_LITERAL_OPERATOR)
+    target_compile_options(${TARGET} PRIVATE
+      -Wno-error=deprecated-literal-operator)
+  endif()
   target_compile_options(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:-O3>")
   target_compile_definitions(${TARGET} PRIVATE "$<$<NOT:$<CONFIG:Debug>>:NDEBUG>")
 endfunction()
