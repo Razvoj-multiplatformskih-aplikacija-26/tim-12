@@ -4,7 +4,11 @@
 // Na Linux desktopu upis ide preko Secret Service (libsecret) sistemskog
 // korisnika; na sistemu bez njega upis ne uspeva, pa prijava tada vazi
 // samo do gasenja aplikacije (AuthBloc cuvanje tretira kao best-effort).
-// U pregledacu upis ide u zasifrovano skladiste pregledaca.
+// U pregledacu upis ide u zasifrovano skladiste pregledaca. Na macOS-u
+// token ide u korisnikov login Keychain (`useDataProtectionKeyChain:
+// false`): Data Protection Keychain trazi `keychain-access-groups`, a to
+// pravo traze potpis razvojnim sertifikatom, pa se aplikacija bez njega ne
+// bi ni izgradila.
 // Nista se ne instalira iz koda.
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:radioroom_blocs/radioroom_blocs.dart';
@@ -14,7 +18,11 @@ const secureTokenKey = 'radioroom_token';
 
 final class SecureTokenStore implements TokenStore {
   SecureTokenStore([FlutterSecureStorage? storage])
-    : _storage = storage ?? const FlutterSecureStorage();
+    : _storage =
+          storage ??
+          const FlutterSecureStorage(
+            mOptions: MacOsOptions(useDataProtectionKeyChain: false),
+          );
 
   final FlutterSecureStorage _storage;
 
