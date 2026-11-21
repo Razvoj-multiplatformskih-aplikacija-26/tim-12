@@ -66,12 +66,6 @@ Ekran glavnog toka (Glasaj tab) pokazuje sva 4 stanja: učitavanje (korak 1), po
 7. **Greška i oporavak:** meni ⋮ → „Simuliraj grešku“ → sledeći zahtev (npr. glas) pada → ekran greške → „Pokušaj ponovo“ vraća podatke.
 8. **Napravi sobu:** početna → naziv → ulaz u novu praznu sobu. Prazan naziv → SnackBar „Naziv sobe ne sme biti prazan.“. QR dugme → stub dijalog („stiže u KT2“).
 
-### Izmene uživo — gde se šta menja
-
-- **Pravilo:** limit aktivnih predloga je `limit = 3` u `checkMaxActiveProposals` (`packages/domain/lib/src/rules/proposal_rules.dart`). Promena na 2 menja i proveru u formi, i proveru u Bloc-u, i broj u poruci — bez izmene ekrana.
-- **Rok nedavno puštene pesme:** `cooldown` u `checkNotRecentlyPlayed`, isti fajl.
-- **Zamena porta:** nova implementacija `ProposalRepository` i jedna linija u `lib/main.dart`; `git diff lib/ui/` ostaje prazan.
-
 ## Ikonica
 
 Ikonica je kod: crta je `tool/render_icon_test.dart` (motiv, boja brenda `#5B3FD9`), a `flutter_launcher_icons` pravi sve veličine za platforme (podešavanje u `pubspec.yaml`). Posle izmene, iz `apps/mobile`:

@@ -99,6 +99,35 @@ void main() {
       expect(find.text('Tvoj predlog'), findsOneWidget);
     });
 
+    testWidgets('povlacenje: dugme samo na svom predlogu koji ceka', (
+      tester,
+    ) async {
+      await _start(tester, '/soba/r1/predlog/p1');
+      expect(find.text('Povuci predlog'), findsNothing);
+
+      await _start(tester, '/soba/r1/predlog/p3');
+      expect(find.text('Povuci predlog'), findsOneWidget);
+    });
+
+    testWidgets('povlacenje svog predloga: potvrda, pa stanje Uklonjena', (
+      tester,
+    ) async {
+      await _start(tester, '/soba/r1/predlog/p3');
+
+      await tester.tap(find.text('Povuci predlog'));
+      await tester.pumpAndSettle();
+      expect(find.text('Povući „Đurđevdan“?'), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, 'Povuci'));
+      await tester.pump();
+      await tester.pump(_delay);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Uklonjena'), findsOneWidget);
+      // Povucen predlog vise ne ceka ishod — dugme nestaje.
+      expect(find.text('Povuci predlog'), findsNothing);
+    });
+
     testWidgets('pustena pesma: vreme pustanja, bez glasanja', (tester) async {
       await _start(tester, '/soba/r1/predlog/p8');
       expect(find.text('Puštena u'), findsOneWidget);

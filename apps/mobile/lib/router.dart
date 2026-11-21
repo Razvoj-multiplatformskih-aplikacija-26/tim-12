@@ -76,6 +76,7 @@ GoRouter createRouter({
             repository: repository,
             roomId: roomId,
             currentUser: _currentUser(authBloc),
+            currentRole: _currentRole(authBloc),
           )..add(const ProposalsRequested()),
           child: _RuleErrorListener(child: child),
         );
@@ -118,6 +119,13 @@ GoRouter createRouter({
 UserId _currentUser(AuthBloc authBloc) {
   final state = authBloc.state;
   if (state is Authenticated) return state.user.id;
+  throw StateError('Ruta sobe bez prijave.');
+}
+
+/// Uloga tekuceg korisnika (pravilo povlacenja); isti cuvar kao gore.
+Role _currentRole(AuthBloc authBloc) {
+  final state = authBloc.state;
+  if (state is Authenticated) return state.user.role;
   throw StateError('Ruta sobe bez prijave.');
 }
 

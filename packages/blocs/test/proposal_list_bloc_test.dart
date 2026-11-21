@@ -433,4 +433,110 @@ void main() {
       );
     });
   });
+
+  group('povlacenje svog predloga', () {
+    final own = _proposal('p1', by: _user, status: const Proposed());
+    final foreign = _proposal('p2', status: const Proposed());
+    final ownWinner = _proposal('p3', by: _user, status: const Winner());
+    final snapshot = _snapshot(proposals: [own, foreign, ownWinner]);
+
+    void verifyNoWithdraw() => verifyNever(
+          () => repository.withdrawProposal(
+            roomId: any(named: 'roomId'),
+            proposalId: any(named: 'proposalId'),
+          ),
+        );
+
+    test('canWithdraw: samo svoj predlog koji ceka ishod', () {
+      final bloc = build();
+      expect(bloc.canWithdraw(own), isTrue);
+      expect(bloc.canWithdraw(foreign), isFalse);
+      expect(bloc.canWithdraw(ownWinner), isFalse);
+      bloc.close();
+    });
+
+    test('canWithdraw: moderator u mobilnoj ne povlaci ni svoj', () {
+      final bloc = ProposalListBloc(
+        repository: repository,
+        roomId: _roomId,
+        currentUser: _user,
+        currentRole: Role.moderator,
+      );
+      expect(bloc.canWithdraw(own), isFalse);
+      bloc.close();
+    });
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'svoj predlog: port ga povlaci, lista ga vidi kao uklonjen',
+      setUp: () => when(
+        () => repository.withdrawProposal(
+          roomId: _roomId,
+          proposalId: own.id,
+        ),
+      ).thenAnswer((_) async => own.withStatus(const Removed())),
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(ProposalWithdrawn(own.id)),
+      expect: () => [
+        _loaded(
+          _snapshot(
+            proposals: [own.withStatus(const Removed()), foreign, ownWinner],
+          ),
+        ),
+      ],
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'tudj predlog: pravilo odbija pre porta (not_own_proposal)',
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(ProposalWithdrawn(foreign.id)),
+      expect: () => [_ruleError<NotOwnProposal>()],
+      verify: (_) => verifyNoWithdraw(),
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'svoj pobednik: pravilo odbija pre porta (proposal_not_withdrawable)',
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(ProposalWithdrawn(ownWinner.id)),
+      expect: () => [_ruleError<ProposalNotWithdrawable>()],
+      verify: (_) => verifyNoWithdraw(),
+    );
+
+    blocTest<ProposalListBloc, ProposalListState>(
+      'server odbije (predlog je u medjuvremenu pobedio): razlog i reload',
+      setUp: () {
+        when(
+          () => repository.withdrawProposal(
+            roomId: any(named: 'roomId'),
+            proposalId: any(named: 'proposalId'),
+          ),
+        ).thenThrow(
+          const ServerRejected(
+            ApiError(
+              code: ErrorCodes.proposalNotWithdrawable,
+              data: {'proposalId': 'p1'},
+            ),
+          ),
+        );
+        when(() => repository.loadRoom(_roomId)).thenAnswer(
+          (_) async => snapshot,
+        );
+      },
+      build: build,
+      seed: () => _loaded(snapshot),
+      act: (bloc) => bloc.add(ProposalWithdrawn(own.id)),
+      expect: () => [
+        const ProposalsError(
+          reason: ApiError(
+            code: ErrorCodes.proposalNotWithdrawable,
+            data: {'proposalId': 'p1'},
+          ),
+        ),
+        _loaded(snapshot),
+      ],
+      verify: (_) => verify(() => repository.loadRoom(_roomId)).called(1),
+    );
+  });
 }
