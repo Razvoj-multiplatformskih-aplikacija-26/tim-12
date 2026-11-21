@@ -82,7 +82,13 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
       if (rejected.error.code == ErrorCodes.sessionExpired ||
           rejected.error.code == ErrorCodes.unauthenticated) {
         await _tokenStore.deleteToken().catchError((Object _) {});
-        emit(const Unauthenticated());
+        // Istekla prijava se kaze korisniku; povucena (odjava na drugom
+        // mestu, nepoznat token) samo vodi na prijavu.
+        emit(
+          Unauthenticated(
+            expired: rejected.error.code == ErrorCodes.sessionExpired,
+          ),
+        );
       } else {
         emit(AuthFailure(rejected.error));
       }
@@ -106,8 +112,9 @@ final class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onExpired(Emitter<AuthState> emit) async {
     // Server je odbacio token usred rada (401 sa data rute): sacuvana
-    // prijava se brise, cuvar ruta vraca ekran na prijavu.
+    // prijava se brise, cuvar ruta vraca ekran na prijavu, a ekran prijave
+    // kaze da je istekla.
     await _tokenStore.deleteToken().catchError((Object _) {});
-    emit(const Unauthenticated());
+    emit(const Unauthenticated(expired: true));
   }
 }
