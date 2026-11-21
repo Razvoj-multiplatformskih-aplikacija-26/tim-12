@@ -92,6 +92,17 @@ final class HttpProposalRepository implements ProposalRepository {
   }
 
   @override
+  Future<Proposal> withdrawProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) async {
+    final json = await _api.postJson(
+      '/rooms/${roomId.value}/proposals/${proposalId.value}/withdraw',
+    );
+    return ProposalDto.fromJson(json).toDomain();
+  }
+
+  @override
   Future<Room> closeRoom({required RoomId roomId}) async {
     final json = await _api.postJson('/rooms/${roomId.value}/close');
     return RoomDto.fromJson(json).toDomain();

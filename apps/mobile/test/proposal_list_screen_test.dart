@@ -56,6 +56,12 @@ final class _TestRepository implements ProposalRepository {
   }) => throw UnimplementedError();
 
   @override
+  Future<Proposal> withdrawProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) => throw UnimplementedError();
+
+  @override
   Future<Room> closeRoom({required RoomId roomId}) =>
       throw UnimplementedError();
 

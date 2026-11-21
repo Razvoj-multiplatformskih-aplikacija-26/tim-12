@@ -89,6 +89,14 @@ final class FakeModerationRepository implements ProposalRepository {
     return removed;
   }
 
+  /// Backoffice ne povlaci predloge (to je akcija slusaoca u mobilnoj);
+  /// lazni izvor ipak ispunjava port istim prelazom kao uklanjanje.
+  @override
+  Future<Proposal> withdrawProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) => removeProposal(roomId: roomId, proposalId: proposalId);
+
   @override
   Future<Room> closeRoom({required RoomId roomId}) async {
     await _request();

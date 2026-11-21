@@ -44,6 +44,14 @@ abstract interface class ProposalRepository {
     required ProposalId proposalId,
   });
 
+  /// Slusalac povlaci SVOJ predlog (prelaz u `Removed`) i vraca ga. Da je
+  /// predlog njegov i da jos ceka ishod proverava Bloc domenom
+  /// (`checkCanWithdraw`); server isto pravilo proverava ponovo.
+  Future<Proposal> withdrawProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  });
+
   /// Zatvara sobu (prelaz u `RoomClosed`) i vraca je. Prelaz proverava Bloc.
   Future<Room> closeRoom({required RoomId roomId});
 

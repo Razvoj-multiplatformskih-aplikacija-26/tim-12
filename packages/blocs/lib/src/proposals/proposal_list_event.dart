@@ -1,4 +1,5 @@
-// Dogadjaji glavnog toka slusaoca (odluka O3: ucitavanje, predlog, glas).
+// Dogadjaji glavnog toka slusaoca (odluka O3: ucitavanje, predlog, glas;
+// KT2: povlacenje svog predloga).
 //
 // Ekran samo salje ove dogadjaje; sta oni znace (pravila, port) odlucuje
 // Bloc pozivom domena. Sealed da Bloc mora obraditi svaki dogadjaj.
@@ -30,6 +31,16 @@ final class ProposalAdded extends ProposalListEvent {
 /// Slusalac glasa za predlog.
 final class VoteCast extends ProposalListEvent {
   const VoteCast(this.proposalId);
+
+  final ProposalId proposalId;
+
+  @override
+  List<Object?> get props => [proposalId];
+}
+
+/// Slusalac povlaci svoj predlog dok ceka ishod.
+final class ProposalWithdrawn extends ProposalListEvent {
+  const ProposalWithdrawn(this.proposalId);
 
   final ProposalId proposalId;
 

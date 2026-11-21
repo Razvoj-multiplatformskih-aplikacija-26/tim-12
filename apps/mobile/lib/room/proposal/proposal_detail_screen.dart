@@ -3,6 +3,9 @@
 // Nema svoj izvor podataka: cita predlog iz istog Bloc-a kao lista (deli ga
 // ShellRoute sobe), pa glas dat ovde lista odmah vidi. Kao i lista, ekran
 // samo crta stanje i salje dogadjaje; prekrsaj pravila prikazuje ruter.
+// Svoj predlog koji ceka ishod moze da se povuce (KT2: akcija samo nad
+// svojim zapisom); kad je to dozvoljeno odlucuje Bloc istim pravilom
+// domena kojim proverava i samu akciju.
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -14,6 +17,7 @@ import '../../paths.dart';
 import '../shared/proposal_labels.dart';
 import '../shared/room_error_view.dart';
 import '../shared/vote_confirmation.dart';
+import '../shared/withdraw_confirmation.dart';
 
 class ProposalDetailScreen extends StatelessWidget {
   const ProposalDetailScreen({
@@ -46,6 +50,7 @@ class ProposalDetailScreen extends StatelessWidget {
             proposal: proposal,
             votes: tally[proposal.id] ?? 0,
             isOwn: proposal.proposedBy == currentUser,
+            canWithdraw: context.read<ProposalListBloc>().canWithdraw(proposal),
             proposer: proposerLabel(proposal, currentUser),
           ),
         },
@@ -59,12 +64,14 @@ class _Details extends StatelessWidget {
     required this.proposal,
     required this.votes,
     required this.isOwn,
+    required this.canWithdraw,
     required this.proposer,
   });
 
   final Proposal proposal;
   final int votes;
   final bool isOwn;
+  final bool canWithdraw;
   final String proposer;
 
   @override
@@ -119,6 +126,14 @@ class _Details extends StatelessWidget {
             onPressed: () => confirmVote(context, proposal),
             icon: const Icon(Icons.how_to_vote),
             label: const Text('Glasaj'),
+          ),
+        ],
+        if (canWithdraw) ...[
+          const SizedBox(height: Spacing.m),
+          OutlinedButton.icon(
+            onPressed: () => confirmWithdraw(context, proposal),
+            icon: const Icon(Icons.undo),
+            label: const Text('Povuci predlog'),
           ),
         ],
       ],

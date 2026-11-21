@@ -1,4 +1,5 @@
-// Bloc glavnog toka slusaoca: ucitavanje sobe, predlog pesme, glas.
+// Bloc glavnog toka slusaoca: ucitavanje sobe, predlog pesme, glas i
+// povlacenje svog predloga.
 //
 // Bloc NE sadrzi pravila: pre svake akcije zove pravila iz domena i tek ako
 // sva vaze zove port. Prekrsaj pravila (`RuleInvalid`) nije greska ekrana —
@@ -8,6 +9,8 @@
 //
 // "Sad" stize kroz [clock] (ista konvencija kao domen), a korisnik kroz
 // konstruktor — u KT1 nema prijave, u KT2 ga daje auth bez izmene ekrana.
+// Uloga je potrebna samo pravilu povlacenja (moderator u mobilnoj sme da
+// gleda, ali ne povlaci); podrazumevano slusalac, kao u KT1.
 import 'package:bloc/bloc.dart';
 import 'package:radioroom_domain/radioroom_domain.dart';
 
@@ -23,10 +26,12 @@ final class ProposalListBloc
     required ProposalRepository repository,
     required RoomId roomId,
     required UserId currentUser,
+    Role currentRole = Role.listener,
     DateTime Function()? clock,
   })  : _repository = repository,
         _roomId = roomId,
         _currentUser = currentUser,
+        _currentRole = currentRole,
         _clock = clock ?? DateTime.now,
         super(const ProposalsInitial()) {
     // Jedan handler za sve dogadjaje, redom (ne paralelno): drugi brzi tap
@@ -36,6 +41,8 @@ final class ProposalListBloc
         ProposalsRequested() => _onRequested(emit),
         ProposalAdded(:final song) => _onAdded(song, emit),
         VoteCast(:final proposalId) => _onVoteCast(proposalId, emit),
+        ProposalWithdrawn(:final proposalId) =>
+          _onWithdrawn(proposalId, emit),
       },
       transformer: (events, mapper) => events.asyncExpand(mapper),
     );
@@ -44,7 +51,18 @@ final class ProposalListBloc
   final ProposalRepository _repository;
   final RoomId _roomId;
   final UserId _currentUser;
+  final Role _currentRole;
   final DateTime Function() _clock;
+
+  /// Korisnik za pravila prava; pravila citaju samo ID i ulogu.
+  User get _user =>
+      User(id: _currentUser, displayName: '', role: _currentRole);
+
+  /// Da li tekuci korisnik sme da povuce [proposal] — isto pravilo koje
+  /// Bloc proverava pre poziva porta, pa ekran dugme prikazuje tacno kad
+  /// akcija ima smisla.
+  bool canWithdraw(Proposal proposal) =>
+      checkCanWithdraw(user: _user, proposal: proposal).isValid;
 
   Future<void> _onRequested(Emitter<ProposalListState> emit) async {
     emit(const ProposalsLoading());
@@ -145,6 +163,47 @@ final class ProposalListBloc
             round: snapshot.round,
             proposals: snapshot.proposals,
             votes: [...snapshot.votes, vote],
+          ),
+        ),
+      );
+    } on ServerRejected catch (rejected) {
+      await _onRejected(rejected, emit);
+    } on Exception {
+      emit(const ProposalsError());
+    }
+  }
+
+  Future<void> _onWithdrawn(
+    ProposalId proposalId,
+    Emitter<ProposalListState> emit,
+  ) async {
+    final snapshot = _currentSnapshot;
+    if (snapshot == null) return;
+    final proposal =
+        snapshot.proposals.where((p) => p.id == proposalId).firstOrNull;
+    if (proposal == null) return;
+
+    final outcome = checkCanWithdraw(user: _user, proposal: proposal);
+    if (outcome case RuleInvalid(:final error)) {
+      emit(_stateFor(snapshot, ruleError: error));
+      return;
+    }
+
+    try {
+      final withdrawn = await _repository.withdrawProposal(
+        roomId: _roomId,
+        proposalId: proposalId,
+      );
+      emit(
+        _stateFor(
+          RoomSnapshot(
+            room: snapshot.room,
+            round: snapshot.round,
+            proposals: [
+              for (final p in snapshot.proposals)
+                p.id == withdrawn.id ? withdrawn : p,
+            ],
+            votes: snapshot.votes,
           ),
         ),
       );

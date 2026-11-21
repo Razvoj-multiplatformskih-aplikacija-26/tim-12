@@ -206,6 +206,54 @@ void main() {
       expect(proposal.status, const Removed());
     });
 
+    test('withdrawProposal udara .../withdraw i vraca predlog', () async {
+      Uri? seenUrl;
+      String? seenMethod;
+      final api = ApiClient(
+        baseUrl: 'http://test',
+        client: MockClient((request) async {
+          seenUrl = request.url;
+          seenMethod = request.method;
+          return _ok({..._proposal, 'status': 'removed'});
+        }),
+      );
+      final proposal = await HttpProposalRepository(api).withdrawProposal(
+        roomId: const RoomId('r1'),
+        proposalId: const ProposalId('p1'),
+      );
+      expect(seenMethod, 'POST');
+      expect(seenUrl.toString(), 'http://test/rooms/r1/proposals/p1/withdraw');
+      expect(proposal.status, const Removed());
+    });
+
+    test('withdrawProposal: tudj predlog postaje ServerRejected', () async {
+      final api = ApiClient(
+        baseUrl: 'http://test',
+        client: MockClient(
+          (_) async => http.Response(
+            jsonEncode({
+              'code': 'not_own_proposal',
+              'data': {'proposalId': 'p2'},
+            }),
+            403,
+          ),
+        ),
+      );
+      await expectLater(
+        HttpProposalRepository(api).withdrawProposal(
+          roomId: const RoomId('r1'),
+          proposalId: const ProposalId('p2'),
+        ),
+        throwsA(
+          isA<ServerRejected>().having(
+            (e) => e.error.code,
+            'code',
+            ErrorCodes.notOwnProposal,
+          ),
+        ),
+      );
+    });
+
     test('closeRoom udara .../close i vraca zatvorenu sobu', () async {
       Uri? seenUrl;
       final api = ApiClient(

@@ -122,6 +122,14 @@ final class FakeProposalRepository implements ProposalRepository {
     return removed;
   }
 
+  /// Kao uklanjanje: povucen predlog prelazi u `Removed`. Pravilo (svoj
+  /// predlog, ceka ishod) je vec proverio Bloc.
+  @override
+  Future<Proposal> withdrawProposal({
+    required RoomId roomId,
+    required ProposalId proposalId,
+  }) => removeProposal(roomId: roomId, proposalId: proposalId);
+
   @override
   Future<Room> closeRoom({required RoomId roomId}) async {
     await _request();
