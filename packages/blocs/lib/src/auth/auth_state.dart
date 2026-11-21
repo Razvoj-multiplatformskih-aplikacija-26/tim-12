@@ -35,7 +35,15 @@ final class Authenticated extends AuthState {
 
 /// Odjavljen (ili bez sacuvane sesije): cuvar ruta vodi na prijavu.
 final class Unauthenticated extends AuthState {
-  const Unauthenticated();
+  const Unauthenticated({this.expired = false});
+
+  /// Prijava je istekla (server je odbio token sa `session_expired`, usred
+  /// rada ili pri obnovi posle ponovnog pokretanja) — ekran prijave to kaze
+  /// korisniku. Odjava i prvo pokretanje bez tokena su `false`.
+  final bool expired;
+
+  @override
+  List<Object?> get props => [expired];
 }
 
 /// Prijava nije uspela. Bez teksta — poruku bira aplikacija (`serverMessage`

@@ -54,6 +54,21 @@ Future<void> _loginAs(
 }
 
 void main() {
+  testWidgets('istekla prijava: prijava kaze zasto, odjava ne', (
+    tester,
+  ) async {
+    final (router, auth) = await _start(tester, '/sobe');
+    expect(find.text('Sesija je istekla. Prijavi se ponovo.'), findsNothing);
+
+    // Prijava, pa server odbije token usred rada (`onAuthFailure`).
+    await _loginAs(tester, 'ana', 'demo1234');
+    auth.add(const SessionExpired());
+    await tester.pumpAndSettle();
+
+    expect(_location(router), '/login');
+    expect(find.text('Sesija je istekla. Prijavi se ponovo.'), findsOneWidget);
+  });
+
   testWidgets('neprijavljen na /sobe zavrsava na prijavi', (tester) async {
     final (router, _) = await _start(tester, '/sobe');
     expect(_location(router), '/login');

@@ -76,6 +76,24 @@ class _LoginScreenState extends State<LoginScreen> {
                 children: [
                   const Text('Prijavi se da predlažeš pesme i glasaš.'),
                   const SizedBox(height: 16),
+                  // Istekla prijava: ekran kaze zasto je korisnik ovde
+                  // (ista poruka kao za `session_expired` sa servera).
+                  BlocBuilder<AuthBloc, AuthState>(
+                    builder: (context, state) => switch (state) {
+                      Unauthenticated(expired: true) => Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: Text(
+                          serverMessage(
+                            const ApiError(code: ErrorCodes.sessionExpired),
+                          ),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.error,
+                          ),
+                        ),
+                      ),
+                      _ => const SizedBox.shrink(),
+                    },
+                  ),
                   TextField(
                     controller: _username,
                     decoration: const InputDecoration(

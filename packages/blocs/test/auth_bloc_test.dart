@@ -185,7 +185,7 @@ void main() {
     );
 
     blocTest<AuthBloc, AuthState>(
-      'istekla sacuvana sesija brise token i vodi na prijavu',
+      'istekla sacuvana sesija brise token, vodi na prijavu i kaze zasto',
       build: build,
       setUp: () {
         when(() => store.readToken()).thenAnswer((_) async => 'mrtav');
@@ -194,7 +194,10 @@ void main() {
         ).thenThrow(_rejected(ErrorCodes.sessionExpired));
       },
       act: (bloc) => bloc.add(const SessionRestored()),
-      expect: () => [const AuthLoading(), const Unauthenticated()],
+      expect: () => [
+        const AuthLoading(),
+        const Unauthenticated(expired: true),
+      ],
       verify: (_) => verify(() => store.deleteToken()).called(1),
     );
 
@@ -244,11 +247,11 @@ void main() {
     );
 
     blocTest<AuthBloc, AuthState>(
-      'istek usred rada brise token i vodi na prijavu',
+      'istek usred rada brise token, vodi na prijavu i kaze zasto',
       build: build,
       seed: () => const Authenticated(_user),
       act: (bloc) => bloc.add(const SessionExpired()),
-      expect: () => [const Unauthenticated()],
+      expect: () => [const Unauthenticated(expired: true)],
       verify: (_) {
         verify(() => store.deleteToken()).called(1);
         verifyNever(() => repository.logout());
@@ -264,6 +267,8 @@ void main() {
         const AuthFailure(ApiError(code: ErrorCodes.sessionExpired)),
       );
       expect(const Unauthenticated(), const Unauthenticated());
+      // Istekla prijava i odjava nisu isto stanje (ekran prijave ih razlikuje).
+      expect(const Unauthenticated(expired: true), isNot(const Unauthenticated()));
     });
   });
 }
