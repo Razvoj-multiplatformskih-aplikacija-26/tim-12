@@ -55,6 +55,15 @@ class _RoomsScreenState extends State<RoomsScreen> {
           child: Scaffold(
             appBar: AppBar(
               title: const Text('RadioRoom'),
+              actions: [
+                // Odjava: brise token i vraca na prijavu (cuvar ruta).
+                IconButton(
+                  tooltip: 'Odjavi se',
+                  icon: const Icon(Icons.logout),
+                  onPressed: () =>
+                      context.read<AuthBloc>().add(const LogoutRequested()),
+                ),
+              ],
               bottom: const TabBar(
                 tabs: [
                   Tab(text: 'Napravi sobu'),

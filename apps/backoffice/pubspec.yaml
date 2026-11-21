@@ -53,6 +53,8 @@ dependencies:
     path: ../../packages/contract
   flutter_bloc: ^9.1.1
   go_router: ^18.1.2
+  # Token u bezbednom skladistu platforme; lozinka se nikad ne cuva.
+  flutter_secure_storage: ^9.2.4
 
 dev_dependencies:
   flutter_test:

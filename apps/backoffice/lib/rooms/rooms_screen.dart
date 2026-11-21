@@ -23,6 +23,13 @@ class RoomsScreen extends StatelessWidget {
       appBar: AppBar(
         title: const Text('Sobe'),
         actions: [
+          // Odjava: brise token i vraca na prijavu (cuvar ruta).
+          IconButton(
+            tooltip: 'Odjavi se',
+            icon: const Icon(Icons.logout),
+            onPressed: () =>
+                context.read<AuthBloc>().add(const LogoutRequested()),
+          ),
           if (onSimulateError != null)
             PopupMenuButton<void>(
               itemBuilder: (_) => [

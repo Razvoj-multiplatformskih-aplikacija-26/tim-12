@@ -15,15 +15,18 @@ import 'package:radioroom_mobile/main.dart';
 import 'package:radioroom_mobile/router.dart';
 import 'package:radioroom_mobile/room/proposal/new_proposal_screen.dart';
 
+import 'fake_auth_repository.dart';
+
 const _delay = Duration(milliseconds: 10);
 
 late FakeProposalRepository _repo;
 
 Future<GoRouter> _start(WidgetTester tester, String location) async {
   _repo = FakeProposalRepository(delay: _delay);
-  final router = createRouter(repository: _repo, currentUser: demoUser)
+  final auth = await authenticatedBloc();
+  final router = createRouter(repository: _repo, authBloc: auth)
     ..go(location);
-  await tester.pumpWidget(RadioRoomApp(router: router));
+  await tester.pumpWidget(RadioRoomApp(router: router, authBloc: auth));
   await tester.pump();
   await tester.pump(_delay);
   return router;
